@@ -60,6 +60,51 @@
     ]
   },
   {
+    "id": "photo-schedule",
+    "name": "오늘의 사진 스케줄",
+    "english": "Visual Schedule Board",
+    "group": "언어·의사소통",
+    "icon": "calendar",
+    "color": "yellow",
+    "description": "핸드폰 사진으로 카드를 만들어 하루 일과를 보여주고, 아이가 직접 「끝」을 눌러 끝 박스로 옮기는 시각 스케줄 보드",
+    "features": [
+      "핸드폰 사진 카드",
+      "요일 탭 · 끝 박스",
+      "남아·여아 버전 · 아이 모드"
+    ],
+    "mode": "internal",
+    "url": "./schedule/",
+    "subtitle": "사진 시각 스케줄 · 가정 연계",
+    "aliases": [
+      "시각 스케줄",
+      "사진 스케줄 보드",
+      "일과표"
+    ]
+  },
+  {
+    "id": "aac-toolbox",
+    "name": "말이 통하는 하루",
+    "english": "AAC Toolbox",
+    "group": "언어·의사소통",
+    "icon": "cards",
+    "color": "blue",
+    "description": "먼저–다음 보드, 선택판, 타이머 카드, 핵심어휘 보드, 상황별 미니 보드, AAC 어휘 선정 도우미를 한 곳에서. 사진 카드는 공용 카드함에 저장",
+    "features": [
+      "도구 6종 · 공용 카드함",
+      "Fitzgerald 색 코딩",
+      "읽어주기(TTS) · 인쇄"
+    ],
+    "mode": "internal",
+    "url": "./aac-toolbox/",
+    "subtitle": "AAC 도구함 · 부모용 소통 지원",
+    "aliases": [
+      "AAC 도구함",
+      "선택판",
+      "핵심어휘 보드",
+      "먼저 다음 보드"
+    ]
+  },
+  {
     "id": "listening",
     "name": "듣기·언어기억 훈련",
     "english": "Listening & Verbal Memory",
