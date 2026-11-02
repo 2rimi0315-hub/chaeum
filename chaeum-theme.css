@@ -1,0 +1,98 @@
+
+/* CHAEUM shared visual system | v1: design only, no auth or record changes */
+:root{
+  --chaeum-green:#599880;--chaeum-green-dark:#3c7764;
+  --chaeum-green-pale:#eaf6f0;--chaeum-mint:#dff0e9;
+  --chaeum-cream:#fff9f0;--chaeum-yellow:#f7cc70;
+  --chaeum-sky:#e9f4f9;--chaeum-lavender:#f0eafd;
+  --chaeum-ink:#2e5360;--chaeum-muted:#72868d;
+  --chaeum-line:#e2ece6;--chaeum-white:#ffffff;
+  --chaeum-shadow:0 12px 36px rgba(68,117,91,.075);
+}
+html{background:#fffefa}
+body{background:#fffefa;color:var(--chaeum-ink)}
+.site-header{background:rgba(255,255,255,.985);border-bottom:1px solid #e8eee9}
+.site-header .brand{min-width:0;display:flex;align-items:center}
+.site-header .official-header-logo{display:block;width:clamp(215px,23vw,317px);max-width:100%;height:auto}
+.site-header .nav-link{color:#496d62;font-weight:750}
+.site-header .nav-link:hover{color:var(--chaeum-green-dark)}
+.site-header .nav-link:focus-visible,.site-header .brand:focus-visible{outline:3px solid #9fceba;outline-offset:5px;border-radius:8px}
+.workspace-shell{color:var(--chaeum-ink)}
+.workspace-shell .breadcrumbs{color:#80958e;margin:29px 0 24px}
+.workspace-shell .breadcrumbs strong{color:#477c68}
+.workspace-shell .workspace-head{padding:22px 27px;background:linear-gradient(120deg,#f4faf5,#fff9ef);border:1px solid #e4eee2;border-radius:19px;gap:18px}
+.workspace-shell .workspace-head h1{color:#315c4e}
+.workspace-shell .workspace-head .eyebrow{color:#578e79;font-size:11px}
+.workspace-shell .muted{color:var(--chaeum-muted)}
+.workspace-shell .auth-wrap{max-width:1010px;grid-template-columns:minmax(0,1fr) 410px;gap:38px;margin:45px auto 100px}
+.workspace-shell .auth-intro{background:linear-gradient(120deg,#fffaf1,#f1faf6);border:1px solid #e5ece2;border-radius:24px;padding:28px 28px 22px}
+.workspace-shell .auth-intro h1{font-size:clamp(29px,3vw,39px);letter-spacing:-1.5px;color:#315b4c}
+.workspace-shell .auth-intro>p:last-of-type{color:#688179}
+.workspace-shell .program-symbol{color:#57977d;background:#e3f3e9;border-color:#cee7d7;border-radius:19px;margin-bottom:15px}
+.workspace-shell .login-artwork{margin-top:21px;border-radius:15px;overflow:hidden;background:#eaf7f5;box-shadow:0 6px 15px rgba(78,118,100,.065)}
+.workspace-shell .login-artwork img{display:block;width:100%;height:auto;object-fit:contain}
+.workspace-shell .auth-card,.workspace-shell .panel{border-color:var(--chaeum-line);box-shadow:var(--chaeum-shadow)}
+.workspace-shell .auth-card{background:#fff;border-radius:22px;padding:30px}
+.workspace-shell .auth-header h2{color:#355d50}
+.workspace-shell .auth-eyebrow,.workspace-shell .field-label,.workspace-shell .stack-form label{color:#507e6b}
+.workspace-shell .auth-card input,.workspace-shell .stack-form input,.workspace-shell .stack-form select,.workspace-shell .stack-form textarea{border-color:#dce9df;color:#2e5360;background:#fff}
+.workspace-shell .auth-card input:focus,.workspace-shell .stack-form input:focus,.workspace-shell .stack-form select:focus,.workspace-shell .stack-form textarea:focus{border-color:#69aa8b;box-shadow:0 0 0 3px #e0f2e7;outline:none}
+.workspace-shell .button-primary{background:var(--chaeum-green);color:#fff;border-color:var(--chaeum-green);box-shadow:0 5px 14px rgba(56,120,92,.1)}
+.workspace-shell .button-primary:hover{background:var(--chaeum-green-dark)}
+.workspace-shell .button-light{background:#fff;border:1px solid #d3e6d9;color:#447961}
+.workspace-shell .button-light:hover{background:#eff8f1}
+.workspace-shell button:focus-visible,.workspace-shell a:focus-visible{outline:3px solid #9ccfb3;outline-offset:3px}
+.workspace-shell .app-notice{background:#f0f8f2;border-color:#d6e8d9;color:#426e59;border-radius:15px}
+.workspace-shell .panel-title h2,.workspace-shell .panel h3{color:#355e50}
+.workspace-shell .count-light{background:#eaf6ee;color:#4c8970}
+.workspace-shell .item{background:#fffefb;border-color:#e4ece5}
+.workspace-shell .item.selected{background:#f0faf1;border-color:#9cccaf}
+.workspace-shell .item button{color:#427960;border-color:#d2e5d9;background:#fff}
+.workspace-shell .item button:hover{background:#eef8f0}
+.workspace-shell .new-code{background:#eef8f0;border-color:#c1dfcc}
+.workspace-shell .new-code strong{color:#346d54}
+.workspace-shell .curriculum-picker{border-color:#e0eade;background:linear-gradient(110deg,#fffaf2,#f3faf5)}
+.workspace-shell .curriculum-subject.chosen{border-color:var(--chaeum-green);background:#ecf8f0}
+.workspace-shell .curriculum-admin-links{border-top:1px solid #e5ede6;margin-top:24px;padding-top:2px}
+.workspace-shell .curriculum-admin-links a{color:#47846d;word-break:break-all;text-decoration:underline;text-underline-offset:2px}
+.workspace-shell .admin-login{max-width:470px;margin:26px 0 55px}
+.workspace-shell .workspace-grid{margin-top:22px}
+.workspace-shell .workspace-footnote{color:#82948c}
+@media(max-width:930px){
+ .workspace-shell .auth-wrap{grid-template-columns:1fr 380px;gap:18px}
+ .workspace-shell .auth-intro{padding:22px}
+ .workspace-shell .auth-card{padding:23px}
+}
+@media(max-width:760px){
+ .site-header .official-header-logo{width:225px}
+ .workspace-shell .workspace-head{padding:18px 20px}
+ .workspace-shell .auth-wrap{display:grid;grid-template-columns:1fr;gap:17px;margin:23px auto 70px}
+ .workspace-shell .auth-intro{padding:20px}
+ .workspace-shell .auth-card{padding:23px}
+ .workspace-shell .auth-intro .login-artwork{max-height:220px}
+ .workspace-shell .auth-intro .login-artwork img{max-height:220px;object-fit:contain}
+ .workspace-shell .panel{padding:19px}
+}
+@media(max-width:480px){
+ .site-header .official-header-logo{width:203px}
+ .workspace-shell .auth-intro h1{font-size:29px}
+ .workspace-shell .workspace-head h1{font-size:24px}
+}
+
+/* English joins the existing curriculum subject selector. */
+.workspace-shell .subject-symbol.english{background:#e6ecff;color:#5374af}
+.workspace-shell .curriculum-subject{min-width:0}
+.workspace-shell .curriculum-subject:focus-visible{outline:3px solid #91c8ab;outline-offset:2px}
+
+
+.workspace-shell .subject-availability{display:inline-block;padding:3px 9px;border-radius:999px;background:#fff3d2;color:#7d6029;font-size:11px;font-weight:750;line-height:1.5}
+.workspace-shell .subject-availability.connected{background:#e4f3e9;color:#3e7158}
+
+
+/* Uploaded subject illustrations, 2026-10-28. */
+.workspace-shell .curriculum-subject.with-art{padding:0;overflow:hidden;gap:0;justify-content:flex-start;background:#fff}
+.workspace-shell .subject-art{display:block;flex:none;width:100%;aspect-ratio:1200 / 661;background:#fff9f0}
+.workspace-shell .subject-art img{display:block;width:100%;height:100%;object-fit:cover}
+.workspace-shell .subject-copy{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;padding:15px 8px 17px}
+.workspace-shell .curriculum-subject.with-art.chosen{background:#ecf8f0}
+@media(max-width:600px){.workspace-shell .subject-copy{padding:12px 5px 14px;gap:5px}}

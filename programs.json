@@ -1,0 +1,205 @@
+[
+  {
+    "id": "articulation",
+    "name": "또박또박 말하기",
+    "english": "Speech Sound Therapy",
+    "group": "말소리",
+    "icon": "speech",
+    "color": "peach",
+    "description": "목표 음소별 활동 및 정오반응을 기록하는 수업 기록 프로그램",
+    "features": [
+      "전용 코드",
+      "아동·회기 기록",
+      "수업 기능 연결 준비"
+    ],
+    "mode": "hub-login",
+    "url": null,
+    "subtitle": "조음·음운 중재",
+    "aliases": [
+      "조음·음운 치료"
+    ]
+  },
+  {
+    "id": "pragmatics",
+    "name": "대화하고 생각하기",
+    "english": "Social Communication",
+    "group": "언어·의사소통",
+    "icon": "people",
+    "color": "rose",
+    "description": "상황 이해, 추론, 관용어와 의사소통 중재",
+    "features": [
+      "전용 코드",
+      "아동·회기 기록",
+      "수업 기능 연결 준비"
+    ],
+    "mode": "hub-login",
+    "url": null,
+    "subtitle": "화용언어·상황 이해·문제해결",
+    "aliases": [
+      "화용·언어문제해결"
+    ]
+  },
+  {
+    "id": "aac",
+    "name": "그림으로 말하기",
+    "english": "Augmentative Communication",
+    "group": "언어·의사소통",
+    "icon": "cards",
+    "color": "blue",
+    "description": "치료사용 PECS 카드·AAC 소통판·문장띠 자료 제작 및 A4 인쇄",
+    "features": [
+      "그림카드 직접 등록",
+      "3.5×3.5cm PECS 인쇄",
+      "AAC 소통판·문장띠 제작"
+    ],
+    "mode": "hub-login",
+    "url": "./aac-maker/",
+    "subtitle": "치료사용 PECS·AAC 자료 제작실",
+    "aliases": [
+      "PECS · AAC"
+    ]
+  },
+  {
+    "id": "listening",
+    "name": "듣기·언어기억 훈련",
+    "english": "Listening & Verbal Memory",
+    "group": "언어·의사소통",
+    "icon": "listening",
+    "color": "mint",
+    "description": "문장을 듣고 기억하며 듣기 이해와 언어기억을 연습합니다.",
+    "features": [
+      "117개 문항",
+      "통합 홈페이지 내부 활동",
+      "정오반응·상담 기록"
+    ],
+    "mode": "internal",
+    "url": "./listening.html",
+    "subtitle": "문장 듣기·기억·이해",
+    "aliases": [
+      "듣기 훈련",
+      "청각기억",
+      "듣기기억"
+    ]
+  },
+  {
+    "id": "hangul-dyslexia",
+    "name": "한글 소리 여행",
+    "english": "Korean Dyslexia Intervention",
+    "group": "읽기·쓰기",
+    "icon": "book",
+    "color": "mint",
+    "description": "자소·음소 대응, 해독, 비음화·유창성 및 읽기·쓰기 중재",
+    "features": [
+      "한글 난독 중재",
+      "기존 학습 웹앱 연동",
+      "선생님별 6자리 로그인"
+    ],
+    "mode": "hub-login",
+    "url": "https://gorgeous-chimera-c8f8b3.netlify.app/",
+    "subtitle": "한글 해독·읽기·쓰기",
+    "aliases": [
+      "한글 난독 중재"
+    ]
+  },
+  {
+    "id": "dyslexia",
+    "name": "영어 소리 여행",
+    "english": "English Phonics",
+    "group": "읽기·쓰기",
+    "icon": "letters",
+    "color": "mint",
+    "description": "CVC에서 형태론까지 단계별 해독 중재",
+    "features": [
+      "전용 코드",
+      "아동·회기 기록",
+      "수업 기능 연결 준비"
+    ],
+    "mode": "hub-login",
+    "url": null,
+    "subtitle": "영어 파닉스·단어 읽기",
+    "aliases": [
+      "영어 난독·파닉스"
+    ]
+  },
+  {
+    "id": "reading",
+    "name": "읽고 이해하기",
+    "english": "Reading Intervention",
+    "group": "읽기·쓰기",
+    "icon": "book",
+    "color": "sky",
+    "description": "기존 설명글 읽기중재 사이트에서 선생님 로그인과 수업 기록을 그대로 사용합니다.",
+    "features": [
+      "177개 지문",
+      "기존 선생님 코드",
+      "Word · PDF"
+    ],
+    "mode": "existing-login",
+    "url": "https://radiant-nasturtium-f93c4a.netlify.app/",
+    "subtitle": "설명글 읽기·어휘·내용 이해",
+    "aliases": [
+      "설명글 읽기중재"
+    ]
+  },
+  {
+    "id": "writing",
+    "name": "생각을 글로",
+    "english": "Writing & Narrative",
+    "group": "읽기·쓰기",
+    "icon": "pencil",
+    "color": "yellow",
+    "description": "기존 작문 중재 v4의 7단계 쓰기 활동과 그림 과제를 통합 홈페이지 안에서 사용",
+    "features": [
+      "7단계 작문 활동",
+      "그림별 10개 이상 문항",
+      "전용 코드 · 아동별 기록"
+    ],
+    "mode": "hub-login",
+    "url": "./writing/",
+    "subtitle": "문장·문단·글쓰기 중재",
+    "aliases": [
+      "작문 중재"
+    ]
+  },
+  {
+    "id": "curriculum",
+    "name": "차근차근 교과 배움",
+    "english": "Curriculum Support",
+    "group": "읽기·쓰기",
+    "icon": "library",
+    "color": "lavender",
+    "description": "느린학습자의 국어·사회·과학·영어 교과 학습을 과목별로 지원합니다.",
+    "features": [
+      "국어 · 사회 · 과학 · 영어",
+      "과목별 학습자료 연결",
+      "공통 선생님 로그인 · 회기 기록"
+    ],
+    "mode": "hub-login",
+    "url": null,
+    "subtitle": "국어·사회·과학·영어",
+    "aliases": [
+      "느린학습자 교과지원"
+    ]
+  },
+  {
+    "id": "worksheet-maker",
+    "name": "읽고 쓰는 활동",
+    "english": "Reading Comprehension & Composition",
+    "group": "읽기·쓰기",
+    "icon": "pencil",
+    "color": "sky",
+    "description": "책을 읽고 내용을 이해하며 생각을 글로 표현하는 수준별 읽기이해·작문 활동",
+    "features": [
+      "읽기 전·중·후 활동",
+      "읽기이해·작문",
+      "수준별 활동"
+    ],
+    "mode": "hub-login",
+    "url": null,
+    "subtitle": "읽기이해·작문 활동",
+    "aliases": [
+      "읽기·작문 활동지 메이커",
+      "채움 활동지 만들기"
+    ]
+  }
+]
