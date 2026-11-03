@@ -2,6 +2,9 @@
 const fallback=[];
 const state={programs:[],group:"전체",query:""};
 const programImages = Object.freeze({
+  "photo-schedule": "photo-schedule-approved.webp",
+  "aac-toolbox": "aac-toolbox-approved.webp",
+  listening: "listening-approved.webp",
   reading: "reading.webp",
   articulation: "articulation.webp",
   writing: "writing.webp",

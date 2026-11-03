@@ -61,7 +61,7 @@
   },
   {
     "id": "photo-schedule",
-    "name": "오늘의 사진 스케줄",
+    "name": "사진으로 보는 하루",
     "english": "Visual Schedule Board",
     "group": "언어·의사소통",
     "icon": "calendar",
@@ -74,16 +74,17 @@
     ],
     "mode": "internal",
     "url": "./schedule/",
-    "subtitle": "사진 시각 스케줄 · 가정 연계",
+    "subtitle": "사진으로 확인하는 하루 일과",
     "aliases": [
       "시각 스케줄",
       "사진 스케줄 보드",
-      "일과표"
+      "일과표",
+      "오늘의 사진 스케줄"
     ]
   },
   {
     "id": "aac-toolbox",
-    "name": "말이 통하는 하루",
+    "name": "그림으로 전하는 마음",
     "english": "AAC Toolbox",
     "group": "언어·의사소통",
     "icon": "cards",
@@ -96,17 +97,18 @@
     ],
     "mode": "internal",
     "url": "./aac-toolbox/",
-    "subtitle": "AAC 도구함 · 부모용 소통 지원",
+    "subtitle": "그림으로 표현하는 요구와 생각",
     "aliases": [
       "AAC 도구함",
       "선택판",
       "핵심어휘 보드",
-      "먼저 다음 보드"
+      "먼저 다음 보드",
+      "말이 통하는 하루"
     ]
   },
   {
     "id": "listening",
-    "name": "듣기·언어기억 훈련",
+    "name": "듣고 기억하기",
     "english": "Listening & Verbal Memory",
     "group": "언어·의사소통",
     "icon": "listening",
@@ -123,7 +125,8 @@
     "aliases": [
       "듣기 훈련",
       "청각기억",
-      "듣기기억"
+      "듣기기억",
+      "듣기·언어기억 훈련"
     ]
   },
   {
