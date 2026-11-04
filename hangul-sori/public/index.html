@@ -823,18 +823,23 @@ function audioKey(t){
 }
 function curVoice(){ const id=soundSettings().voice; return id? voiceList.find(v=>v.id===id)||null : null; }
 /* 재생 후보: 고른 선생님 목소리(느리게→보통) → 공통 TTS(느리게→보통) */
-function candidates(text,rate){
+function candidates(text,rate,voiceOverride){
   const base=audioKey(text), ks=[];
   if(rate&&rate<=0.7) ks.push(base+'@slow');
   ks.push(base);
-  const out=[], v=curVoice();
+  const out=[], v=voiceOverride||curVoice();
   if(v) ks.forEach(k=>{ if(v.set.has(k)) out.push('audio/v/'+v.id+'/'+encodeURIComponent(k)+'.mp3'); });
   ks.forEach(k=>{ if(audioManifest? audioManifest.has(k) : true) out.push('audio/'+encodeURIComponent(k)+'.mp3'); });
   return out;
 }
-function say(text,rate){
+/* 녹음된 선생님 목소리 중 무작위 하나 (주어진 소리를 모두 녹음한 목소리만) */
+function randomVoiceFor(texts){
+  const ok=voiceList.filter(v=>texts.every(t=>{ const k=audioKey(t); return v.set.has(k)||v.set.has(k+'@slow'); }));
+  return ok.length? ok[Math.floor(Math.random()*ok.length)] : null;
+}
+function say(text,rate,voiceOverride){
   if(soundSettings().mode==='mute'){ sayToast(text); return; }
-  tryPlay(candidates(text,rate),0,text);
+  tryPlay(candidates(text,rate,voiceOverride),0,text);
 }
 let currentAudio=null;
 function tryPlay(urls,i,text){
@@ -2118,7 +2123,8 @@ ACT_RENDER.disc=function(){
     const c=$(i===0?'dc-s1':'dc-s2');
     if(!c||!deck[idx]) return;
     c.classList.add('playing'); setTimeout(()=>{ if(c) c.classList.remove('playing'); },350);
-    say(i===0? cur().a : cur().b, 0.7);
+    const it=cur(); if(it.v===undefined) it.v=randomVoiceFor([it.a,it.b]);
+    say(i===0? it.a : it.b, 0.7, it.v);
   };
   function playBoth(){
     _dcPlay(0);
