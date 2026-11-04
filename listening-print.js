@@ -14,7 +14,7 @@ function listeningPrintPage(root, subtitle) {
   listeningPrintNode(page, 'p', '채움언어학습연구소', 'print-brand');
   listeningPrintNode(page, 'h1', '듣고 기억하기');
   listeningPrintNode(page, 'h2', subtitle);
-  listeningPrintNode(page, 'p', '이름: ____________________    날짜: ____________________', 'print-identity');
+  listeningPrintNode(page, 'p', '이름: '+(typeof currentListeningChild==='function'&&currentListeningChild()?.name||'____________________')+'    날짜: '+(typeof db!=='undefined'&&db.date||'____________________'), 'print-identity');
   return page;
 }
 function printListeningActivity() {
