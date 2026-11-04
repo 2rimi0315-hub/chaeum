@@ -1,0 +1,23 @@
+#listeningPrintOutput{display:none}
+.listening-print-controls label{display:inline-flex;align-items:center;gap:7px;margin:0}
+.listening-print-controls input[type=checkbox]{width:18px;height:18px;accent-color:#528d7b}
+@page{size:A4 portrait;margin:16mm}
+@media print{
+ body.listening-printing> *{display:none!important}
+ body.listening-printing>#listeningPrintOutput{display:block!important}
+ body.listening-printing{background:white!important;color:#222!important;margin:0!important;padding:0!important}
+ #listeningPrintOutput{font-family:Arial,'Noto Sans KR',sans-serif;font-size:11pt;line-height:1.65;color:#222}
+ .listening-print-page{break-after:page;padding:0;background:white}
+ .listening-print-page:last-child{break-after:auto}
+ .listening-print-page h1{font-size:23pt;margin:0 0 3mm;color:#365f55}
+ .listening-print-page h2{font-size:14pt;margin:0 0 5mm}
+ .listening-print-page h3{font-size:12pt;margin:0 0 2mm}
+ .print-brand{font-size:10pt;color:#456b60;margin:0 0 3mm}
+ .print-identity{padding:4mm 0;border-top:1px solid #859e95;border-bottom:1px solid #859e95}
+ .print-item{margin:6mm 0;break-inside:avoid}
+ .print-passage{border:1px solid #b2c6bc;border-radius:3mm;padding:4mm;white-space:pre-wrap}
+ .print-question{margin:8mm 0;break-inside:avoid}
+ .print-response{margin-top:5mm}
+ .print-page-number{text-align:center;font-size:9pt;color:#666;margin-top:6mm}
+ .print-report{white-space:pre-wrap;overflow-wrap:anywhere;font-size:10.5pt}
+}
