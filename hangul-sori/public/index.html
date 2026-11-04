@@ -2064,19 +2064,33 @@ ACT_RENDER.disc=function(){
     if(t==='cho') return compose(d.cho===A?B:A, d.jung, d.jong||null);
     return compose(d.cho, d.jung, d.jong===A?B:A);
   }
-  const items=[];
-  for(let i=0;i<4;i++){
-    const same=i%2===0;
-    const s1=i<2? sayName(A) : sayName(B);
-    const s2=same? s1 : (s1===sayName(A)? sayName(B) : sayName(A));
-    items.push({a:s1,b:s2,same,lv:'음소'});
+  // 매번 무작위: 같음/다름, 첫 소리(A/B), 음절을 회기마다 새로 뽑음 (8문항 중 같음 2~6개, 같은 답 4번 연속 없음)
+  const coin=()=>Math.random()<0.5;
+  function makeItems(){
+    const out=[];
+    for(let i=0;i<4;i++){
+      const same=coin();
+      const s1=coin()? sayName(A) : sayName(B);
+      const s2=same? s1 : (s1===sayName(A)? sayName(B) : sayName(A));
+      out.push({a:s1,b:s2,same,lv:'음소'});
+    }
+    const pool=[...S().syllA,...S().syllB];
+    for(let i=0;i<4;i++){
+      const sy=pool[Math.floor(Math.random()*pool.length)];
+      const same=coin(), alt=swapT(sy);
+      const diffFirst=coin();
+      out.push(same? {a:sy,b:sy,same,lv:'음절'} : {a:diffFirst?alt:sy, b:diffFirst?sy:alt, same,lv:'음절'});
+    }
+    return shuffle(out);
   }
-  const sylls=shuffle([...S().syllA,...S().syllB]).slice(0,4);
-  sylls.forEach((sy,i)=>{
-    const same=i%2===1;
-    items.push({a:sy, b:same? sy : swapT(sy), same, lv:'음절'});
-  });
-  const deck=shuffle(items);
+  function okDeck(d){
+    const n=d.filter(x=>x.same).length; if(n<2||n>6) return false;
+    for(let i=3;i<d.length;i++) if(d[i].same===d[i-1].same&&d[i].same===d[i-2].same&&d[i].same===d[i-3].same) return false;
+    return d.every(x=>x.same||x.a!==x.b);
+  }
+  let items=makeItems();
+  for(let t=0;t<200&&!okDeck(items);t++) items=makeItems();
+  const deck=items;
   let idx=0, answered=false;
   actFrame('disc','👂 같아요 달라요','두 소리를 잘 듣고 같은 소리인지 다른 소리인지 판단해요 (변별)',`
     <div class="center">
