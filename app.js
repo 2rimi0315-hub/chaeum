@@ -36,9 +36,9 @@ function card(p){
  const internalTarget=p.mode==='internal'&&typeof p.url==='string'&&/^\.\/[\w\-\/]+(\.html)?$/.test(p.url)?p.url:'';
  const target=internalTarget||(isExternal?safeUrl(p.url):`./program.html?program=${encodeURIComponent(p.id)}`);
  const active=!!target;
- const label=p.mode==='internal'||p.mode==='direct-link'?'훈련 시작하기':p.mode==='existing-login'?'기존 코드로 로그인':p.mode==='reference'?'자료실 열기':p.mode==='hub-login'?'전용 코드 로그인':'연결 예정';
- const badge=p.mode==='existing-login'?'기존 로그인 유지':p.mode==='reference'?'공개 자료실':'';
- return `<article class="program-card"><div class="program-top ${safeText(p.color)}">${badge?`<span class="status">${badge}</span>`:""}${illustration}</div><div class="program-content"><h3>${safeText(p.name)}</h3><p class="program-subtitle">${safeText(p.subtitle||p.english)}</p><div class="card-footer">${active?`<a class="card-link" href="${safeText(target)}" ${isExternal?'target="_blank" rel="noopener noreferrer"':''}>${label} <span aria-hidden="true">↗</span></a>`:'<span class="card-pending">주소 확인 후 연결됩니다</span>'}</div></div></article>`;
+ const label=p.mode==='reference'?'자료실 열기':'활동 시작하기';
+ const badge=p.mode==='reference'?'공개 자료실':'';
+ return `<article class="program-card"><div class="program-top ${safeText(p.color)}">${badge?`<span class="status">${badge}</span>`:""}${illustration}</div><div class="program-content"><h3>${safeText(p.name)}</h3><p class="program-subtitle">${safeText(p.subtitle||p.english)}</p><div class="card-footer">${active?`<a class="card-link" href="${safeText(target)}" >${label} <span aria-hidden="true">↗</span></a>`:'<span class="card-pending">주소 확인 후 연결됩니다</span>'}</div></div></article>`;
 }
 function render(){
  const groups=['전체',...new Set(state.programs.map(p=>p.group))];
@@ -46,7 +46,7 @@ function render(){
  tabs.innerHTML=groups.map(g=>`<button type="button" class="tab ${g===state.group?'active':''}" data-group="${safeText(g)}" aria-pressed="${g===state.group}">${safeText(g)}</button>`).join('');
  const filtered=state.programs.filter(p=>(state.group==='전체'||p.group===state.group)&&(`${p.name} ${p.subtitle||""} ${(p.aliases||[]).join(" ")} ${p.english} ${p.description} ${(p.features||[]).join(' ')}`.toLowerCase().includes(state.query.toLowerCase())));
  document.getElementById('cards').innerHTML=filtered.length?filtered.map(card).join(''):'<div class="no-result">일치하는 프로그램이 없습니다.</div>';
- document.getElementById('resultCount').textContent=`전체 ${state.programs.length}개 · 전용 코드 ${state.programs.filter(p=>p.mode==='hub-login').length}개`;
+ document.getElementById('resultCount').textContent=`전체 ${state.programs.length}개 활동`;
  tabs.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{state.group=b.dataset.group;render()}));
 }
 document.getElementById('search').addEventListener('input',e=>{state.query=e.target.value.trim();render()});
