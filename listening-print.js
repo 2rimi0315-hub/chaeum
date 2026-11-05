@@ -21,9 +21,23 @@ function printListeningActivity() {
   if (!listeningPrintReady()) return;
   const root = document.getElementById('listeningPrintOutput');
   root.replaceChildren();
-  const items = document.getElementById('printScope').value === 'level' ? dataset() : [cur()];
+  const scope = document.getElementById('printScope').value;
+  const groups=[];
+  const modes=scope==='all'?['memory','story']:[mode];
+  for(const printMode of modes){
+    const levels=['all','mode'].includes(scope)?['1','2','3']:[level];
+    for(const printLevel of levels){
+      const items=scope==='current'?[cur()]:(printMode==='memory'
+        ? M.map((a,k)=>({id:k,lv:a[0],body:a[1]}))
+        : S.map((a,k)=>({id:k,lv:a[0],title:a[1],body:a[2],questions:a[3]}))).filter(a=>a.lv===printLevel);
+      if(items.length)groups.push({mode:printMode,level:printLevel,items});
+    }
+  }
+  const totalPages=groups.reduce((n,g)=>n+Math.ceil(g.items.length/(g.mode==='story'?1:3)),0);
+  let pageNumber=0;
   const passage = document.getElementById('printPassage').checked;
   const answer = document.getElementById('printAnswers').checked;
+  for(const {mode,level,items} of groups){
   const size = mode === 'story' ? 1 : 3;
   for (let start = 0; start < items.length; start += size) {
     const page = listeningPrintPage(root, (mode === 'story' ? '이야기 듣기' : '문장 기억') + ' · ' + level + '단계' + (answer ? ' · 정답 포함' : ''));
@@ -44,7 +58,8 @@ function printListeningActivity() {
         listeningPrintNode(block, 'p', '관찰:', 'print-response');
       }
     }
-    listeningPrintFooter(page, (Math.floor(start / size) + 1) + ' / ' + Math.ceil(items.length / size));
+    listeningPrintFooter(page, (++pageNumber) + ' / ' + totalPages);
+  }
   }
   showListeningPrintPreview();
 }
