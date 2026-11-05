@@ -1,23 +1,47 @@
 #listeningPrintOutput{display:none}
 .listening-print-controls label{display:inline-flex;align-items:center;gap:7px;margin:0}
 .listening-print-controls input[type=checkbox]{width:18px;height:18px;accent-color:#528d7b}
+body.listening-preview-open{overflow:hidden}
+body.listening-preview-open>#listeningPrintOutput{display:block;position:fixed;inset:0;z-index:10000;overflow:auto;background:#e9eeeb;padding:0 16px 24px;color:#243e35}
+#listeningPrintOutput *{box-sizing:border-box}
+#listeningPrintOutput .print-toolbar{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;padding:14px;background:#fff;border-bottom:1px solid #cadbd1;margin:0 -16px 20px}
+#listeningPrintOutput .print-toolbar p{font-size:13px;margin:0}
+#listeningPrintOutput .listening-print-page{width:178mm;min-height:260mm;margin:0 auto 20px;padding:0;background:#fff;color:#222;font-family:'Noto Sans CJK KR','Noto Sans KR','Malgun Gothic',sans-serif;font-size:13pt;line-height:1.6;overflow-wrap:anywhere;display:flex;flex-direction:column;box-shadow:0 2px 15px #0002}
+#listeningPrintOutput .listening-print-page> *{flex-shrink:0}
+#listeningPrintOutput p{margin:0 0 3mm}
+#listeningPrintOutput h1{font-size:23pt;line-height:1.3;letter-spacing:-.5px;color:#365f55;margin:0 0 3mm}
+#listeningPrintOutput h2{font-size:13pt;line-height:1.4;margin:0 0 5mm;color:#48665a}
+#listeningPrintOutput h3{font-size:14pt;line-height:1.5;margin:0 0 3mm;color:#222}
+#listeningPrintOutput .print-brand{font-size:10pt;color:#456b60;margin:0 0 3mm}
+#listeningPrintOutput .print-identity{font-size:11pt;padding:3mm 0;margin:0 0 5mm;border-top:1px solid #859e95;border-bottom:1px solid #859e95;white-space:pre-wrap}
+#listeningPrintOutput .print-item{margin:3mm 0 5mm;break-inside:avoid}
+#listeningPrintOutput .print-passage{border:1px solid #aabfb3;border-radius:3mm;padding:4mm;margin:0 0 4mm;white-space:pre-wrap;font-size:14pt;line-height:1.75;background:#f4f9f5}
+#listeningPrintOutput .print-question{margin:4mm 0 6mm;break-inside:avoid}
+#listeningPrintOutput .print-response{min-height:15mm;border-bottom:1px solid #9dab9f;margin:2mm 0 3mm;line-height:1.65;font-size:12pt}
+#listeningPrintOutput .print-response.answer-filled{min-height:0;border:0;padding:3mm;background:#f4f9f5}
+#listeningPrintOutput .print-checks{font-size:10pt;margin:3mm 0;line-height:1.7}
+#listeningPrintOutput .print-page-number{margin-top:auto;padding-top:5mm;text-align:center;font-size:9pt;color:#61766a}
+#listeningPrintOutput .print-page-number img{display:block;width:43mm;height:auto;margin:0 auto 2mm}
+#listeningPrintOutput .print-report{white-space:pre-wrap;overflow-wrap:anywhere;font-size:11pt;line-height:1.8}
+#listeningPrintOutput .report-page{display:block;min-height:0}
+@media screen{#listeningPrintOutput .listening-print-page{width:210mm;min-height:292mm;padding:16mm}}
 @page{size:A4 portrait;margin:16mm}
 @media print{
- body.listening-printing> *{display:none!important}
- body.listening-printing>#listeningPrintOutput{display:block!important}
- body.listening-printing{background:white!important;color:#222!important;margin:0!important;padding:0!important}
- #listeningPrintOutput{font-family:Arial,'Noto Sans KR',sans-serif;font-size:11pt;line-height:1.65;color:#222}
- .listening-print-page{break-after:page;padding:0;background:white}
- .listening-print-page:last-child{break-after:auto}
- .listening-print-page h1{font-size:23pt;margin:0 0 3mm;color:#365f55}
- .listening-print-page h2{font-size:14pt;margin:0 0 5mm}
- .listening-print-page h3{font-size:12pt;margin:0 0 2mm}
- .print-brand{font-size:10pt;color:#456b60;margin:0 0 3mm}
- .print-identity{padding:4mm 0;border-top:1px solid #859e95;border-bottom:1px solid #859e95}
- .print-item{margin:6mm 0;break-inside:avoid}
- .print-passage{border:1px solid #b2c6bc;border-radius:3mm;padding:4mm;white-space:pre-wrap}
- .print-question{margin:8mm 0;break-inside:avoid}
- .print-response{margin-top:5mm}
- .print-page-number{text-align:center;font-size:9pt;color:#666;margin-top:6mm}
- .print-report{white-space:pre-wrap;overflow-wrap:anywhere;font-size:10.5pt}
+ body.listening-preview-open> *{display:none!important}
+ body.listening-preview-open>#listeningPrintOutput{display:block!important;position:static!important;overflow:visible!important;background:white!important;padding:0!important;margin:0!important;width:auto!important;height:auto!important}
+ body.listening-preview-open{overflow:visible!important;background:white!important;color:#222!important;margin:0!important;padding:0!important}
+ #listeningPrintOutput .print-toolbar{display:none!important}
+ #listeningPrintOutput .listening-print-page{width:100%;min-height:260mm;margin:0;padding:0;box-shadow:none;break-after:page}
+ #listeningPrintOutput .listening-print-page:last-child{break-after:auto}
+ #listeningPrintOutput .report-page{min-height:0}
 }
+/* Reserve the footer independently so it never creates a trailing sheet. */
+#listeningPrintOutput .listening-print-page{display:block;position:relative;padding-bottom:18mm}
+#listeningPrintOutput .print-page-number{position:absolute;bottom:0;left:0;right:0;margin:0;padding-top:3mm}
+#listeningPrintOutput .print-item{margin:2mm 0 3mm}
+#listeningPrintOutput h3{margin-bottom:2mm}
+#listeningPrintOutput .memory-page .print-response{min-height:10mm}
+#listeningPrintOutput .report-page{padding-bottom:0}
+@media screen{#listeningPrintOutput .listening-print-page{padding:16mm 16mm 34mm}#listeningPrintOutput .print-page-number{bottom:16mm;left:16mm;right:16mm}}
+@media print{#listeningPrintOutput .listening-print-page{padding:0 0 18mm}#listeningPrintOutput .report-page{padding-bottom:0}}
+#listeningPrintOutput .print-page-number img{height:9mm;object-fit:contain}

@@ -24,9 +24,10 @@ function printListeningActivity() {
   const items = document.getElementById('printScope').value === 'level' ? dataset() : [cur()];
   const passage = document.getElementById('printPassage').checked;
   const answer = document.getElementById('printAnswers').checked;
-  const size = mode === 'story' ? 1 : 4;
+  const size = mode === 'story' ? 1 : 3;
   for (let start = 0; start < items.length; start += size) {
     const page = listeningPrintPage(root, (mode === 'story' ? '이야기 듣기' : '문장 기억') + ' · ' + level + '단계' + (answer ? ' · 정답 포함' : ''));
+    if(mode==='memory')page.classList.add('memory-page');
     listeningPrintNode(page, 'p', mode === 'story' ? '이야기를 듣고 질문에 답해 보세요.' : '문장을 듣고 기억해서 그대로 말해 보세요.');
     for (const item of items.slice(start, start + size)) {
       const block = listeningPrintNode(page, 'div', undefined, 'print-item');
@@ -35,18 +36,17 @@ function printListeningActivity() {
       if (mode === 'story') item.questions.forEach((question, index) => {
         const row = listeningPrintNode(block, 'div', undefined, 'print-question');
         listeningPrintNode(row, 'p', (index + 1) + '. ' + question[0]);
-        listeningPrintNode(row, 'p', answer ? '예시 정답: ' + question[1] : '답: __________________________________________________', 'print-response');
+        listeningPrintNode(row, 'p', answer ? '예시 정답: ' + question[1] : '답:', answer ? 'print-response answer-filled' : 'print-response');
       });
       else {
-        if (answer) listeningPrintNode(block, 'p', '목표 문장: ' + item.body);
-        listeningPrintNode(block, 'p', '반응:  □ 독립 정반응   □ 단서 후   □ 오반응');
-        listeningPrintNode(block, 'p', '관찰: __________________________________________________', 'print-response');
+        if (answer && !passage) listeningPrintNode(block, 'p', '목표 문장: ' + item.body, 'print-passage');
+        listeningPrintNode(block, 'p', '반응:  □ 독립 정반응   □ 단서 후   □ 오반응', 'print-checks');
+        listeningPrintNode(block, 'p', '관찰:', 'print-response');
       }
     }
-    listeningPrintNode(page, 'p', (Math.floor(start / size) + 1) + ' / ' + Math.ceil(items.length / size), 'print-page-number');
+    listeningPrintFooter(page, (Math.floor(start / size) + 1) + ' / ' + Math.ceil(items.length / size));
   }
-  document.body.classList.add('listening-printing');
-  window.print();
+  showListeningPrintPreview();
 }
 function printListeningReport() {
   if (!listeningPrintReady()) return;
@@ -54,15 +54,41 @@ function printListeningReport() {
   const root = document.getElementById('listeningPrintOutput');
   root.replaceChildren();
   const page = listeningPrintPage(root, '결과·상담 기록');
+  page.classList.add('report-page');
   listeningPrintNode(page, 'div', report(), 'print-report');
-  document.body.classList.add('listening-printing');
-  window.print();
+  showListeningPrintPreview();
 }
 function clearListeningPrint() {
-  document.body.classList.remove('listening-printing');
+  document.body.classList.remove('listening-printing','listening-preview-open');
+  document.getElementById('listeningPrintOutput').setAttribute('aria-hidden','true');
+  if(listeningPrintPreviousFocus?.isConnected) listeningPrintPreviousFocus.focus();
   document.getElementById('listeningPrintOutput').replaceChildren();
 }
-window.addEventListener('afterprint', clearListeningPrint);
+// Keep the preview intact after print/cancel; some mobile print dialogs return early.
+window.addEventListener('afterprint',()=>document.body.classList.remove('listening-printing'));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('listening-preview-open'))clearListeningPrint();});
 new MutationObserver(() => {
   if (document.getElementById('trainingMain').hidden) clearListeningPrint();
 }).observe(document.getElementById('trainingMain'), {attributes: true, attributeFilter: ['hidden']});
+
+let listeningPrintPreviousFocus=null;
+function listeningPrintFooter(page, number){
+ const footer=listeningPrintNode(page,'div',undefined,'print-page-number');
+ const logo=listeningPrintNode(footer,'img');logo.src='./chaeum-official-logo.webp';logo.alt='채움언어학습연구소';
+ listeningPrintNode(footer,'span','Page '+number);
+}
+function showListeningPrintPreview(){
+ const root=document.getElementById('listeningPrintOutput');
+ listeningPrintPreviousFocus=document.activeElement;
+ root.setAttribute('aria-hidden','false');
+ const toolbar=document.createElement('div');toolbar.className='print-toolbar';
+ listeningPrintNode(toolbar,'p','인쇄 미리보기 · A4 세로');
+ const print=listeningPrintNode(toolbar,'button','인쇄 / PDF 저장');print.type='button';print.className='primary';
+ print.onclick=async()=>{print.disabled=true;try{if(document.fonts)await document.fonts.ready;await Promise.all(Array.from(root.querySelectorAll('img')).map(img=>img.decode?img.decode().catch(()=>{}):Promise.resolve()));if(listeningPrintReady()&&document.body.classList.contains('listening-preview-open'))window.print();}finally{print.disabled=false;}};
+ const close=listeningPrintNode(toolbar,'button','닫기');close.type='button';close.onclick=clearListeningPrint;
+ root.prepend(toolbar);document.body.classList.add('listening-preview-open');root.scrollTop=0;close.focus();
+}
+window.addEventListener('beforeprint',()=>{
+ if(!listeningPrintReady()||document.body.classList.contains('listening-preview-open'))return;
+ if(!document.getElementById('report').classList.contains('hide'))printListeningReport();else printListeningActivity();
+});
