@@ -829,7 +829,9 @@ function candidates(text,rate,voiceOverride){
   ks.push(base);
   const out=[], v=voiceOverride||curVoice();
   if(v) ks.forEach(k=>{ if(v.set.has(k)) out.push('audio/v/'+v.id+'/'+encodeURIComponent(k)+'.mp3'); });
-  ks.forEach(k=>{ if(audioManifest? audioManifest.has(k) : true) out.push('audio/'+encodeURIComponent(k)+'.mp3'); });
+  ks.forEach(k=>{ if(audioManifest&&audioManifest.has(k)) out.push('audio/'+encodeURIComponent(k)+'.mp3'); });  // TTS 파일은 manifest에 있는 것만
+  /* 기본 음성 파일이 없으면 녹음된 다른 선생님 목소리로라도 들려주기 */
+  voiceList.forEach(o=>{ if(o!==v) ks.forEach(k=>{ if(o.set.has(k)) out.push('audio/v/'+o.id+'/'+encodeURIComponent(k)+'.mp3'); }); });
   return out;
 }
 /* 녹음된 선생님 목소리 중 무작위 하나 (주어진 소리를 모두 녹음한 목소리만) */
