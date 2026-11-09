@@ -803,12 +803,15 @@ const ther=id=>D.therapists.find(t=>t.id==id);
 const prog=id=>D.programs.find(p=>p.id==id);
 const client=id=>D.clients.find(c=>c.id==id);
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),1800)}
-function opts(list,sel,empty,lab=x=>x.name){return(empty!=null?`<option value="">${empty}</option>`:'')+list.map(x=>`<option value="${x.id}" ${x.id==sel?'selected':''}>${esc(lab(x))}</option>`).join('')}
+// 동명이인이면 이름 뒤에 생년월일을 붙여 구분
+function cname(c){if(!c)return '';const nm=(c.name||'').trim();if(!nm)return '';const dup=D.clients.some(x=>x!==c&&x.id!==c.id&&(x.name||'').trim()==nm);
+  if(!dup)return nm;return `${nm} (${c.birth?c.birth.replace(/-/g,'.'):(c.phone?'☎'+c.phone.replace(/\D/g,'').slice(-4):'생일 미입력')})`}
+function opts(list,sel,empty,lab=x=>(D.clients||[]).includes(x)?cname(x):x.name){return(empty!=null?`<option value="">${empty}</option>`:'')+list.map(x=>`<option value="${x.id}" ${x.id==sel?'selected':''}>${esc(lab(x))}</option>`).join('')}
 function openM(id){$('#'+id).classList.add('on')}
 function closeM(id){$('#'+id).classList.remove('on')}
 document.querySelectorAll('.modal').forEach(m=>m.addEventListener('mousedown',e=>{if(e.target===m)m.classList.remove('on')}));
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.modal.on').forEach(m=>m.classList.remove('on'))});
-function evLabel(e){const c=client(e.clientId);return c?`[${c.name}] ${prog(e.programId)?.name||e.title||''}`:(e.title||'(제목 없음)')}
+function evLabel(e){const c=client(e.clientId);return c?`[${cname(c)}] ${prog(e.programId)?.name||e.title||''}`:(e.title||'(제목 없음)')}
 function evFeeFor(e){const c=client(e.clientId);if(c&&c.voucher&&c.copay!=null&&c.copay!=='')return Number(c.copay);return Number(e.fee)||0}
 
 /* ---------- 탭 ---------- */
@@ -902,7 +905,7 @@ function catToggle(){const cat=$('#evCat').value,grp=cat=='재활'&&isGroupProg(
   $('#evClientWrap').style.display=(cat=='재활'&&!grp)||cat=='상담/평가'?'':'none';$('#evNameWrap').style.display=cat=='재활'?'none':'';
   $('#evNameWrap').firstChild.textContent=cat=='상담/평가'?'일정 제목 (이용자가 아직 없을 때)':'일정 제목';
   $('#evGroupWrap').style.display=grp?'':'none';
-  if(grp)$('#evGroup').innerHTML=D.clients.filter(c=>c.status!='종결'||evGroupSel.has(c.id)).sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<label class="chk" style="display:inline-flex;width:31%"><input type="checkbox" ${evGroupSel.has(c.id)?'checked':''} onchange="this.checked?evGroupSel.add('${c.id}'):evGroupSel.delete('${c.id}')">${esc(c.name)}</label>`).join('')}
+  if(grp)$('#evGroup').innerHTML=D.clients.filter(c=>c.status!='종결'||evGroupSel.has(c.id)).sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<label class="chk" style="display:inline-flex;width:31%"><input type="checkbox" ${evGroupSel.has(c.id)?'checked':''} onchange="this.checked?evGroupSel.add('${c.id}'):evGroupSel.delete('${c.id}')">${esc(cname(c))}</label>`).join('')}
 $('#evCat').onchange=catToggle;
 $('#evProg').onchange=()=>{const p=prog($('#evProg').value);if(p){$('#evFee').value=p.fee;$('#evDur').value=p.min}const c=$('#evClient').value;if(c)evGroupSel.add(c);catToggle()};
 $('#evClient').onchange=()=>{const c=client($('#evClient').value);if(!c)return;if(c.therapistId)$('#evTher').value=c.therapistId;if(c.programId){$('#evProg').value=c.programId;$('#evProg').onchange()}};
@@ -923,7 +926,7 @@ function saveEvent(){
 }
 function saveGroupEvent(v){const ids=[...evGroupSel];if(!ids.length)return toast('참여 아동을 한 명 이상 고르세요');
   if(editEv){const mates=groupMates(editEv),have=new Set(mates.map(x=>x.clientId));const out=mates.filter(x=>!evGroupSel.has(x.clientId));
-    if(out.length&&!confirm(`${out.map(x=>client(x.clientId)?.name).join(', ')} 아동을 이 그룹 일정에서 뺄까요?`))return;
+    if(out.length&&!confirm(`${out.map(x=>cname(client(x.clientId))).join(', ')} 아동을 이 그룹 일정에서 뺄까요?`))return;
     out.forEach(x=>delete D.logs[x.id]);const outIds=new Set(out.map(x=>x.id));D.events=D.events.filter(x=>!outIds.has(x.id));
     mates.filter(x=>evGroupSel.has(x.clientId)).forEach(x=>{const{clientId,...rest}=v;Object.assign(x,rest)});
     ids.filter(c=>!have.has(c)).forEach(c=>D.events.push({...v,id:uid(),clientId:c,seriesId:''}));toast(`그룹 일정을 수정했어요 (${ids.length}명)`)}
@@ -950,7 +953,7 @@ function renderClients(){
   const list=D.clients.filter(c=>(!q||[c.name,c.guardian,c.phone,c.dx].join(' ').includes(q))&&(!st||c.status==st)&&(!th||clThers(c).includes(th))).sort((a,b)=>(a.status=='종결')-(b.status=='종결')||a.name.localeCompare(b.name));
   $('#cCount').textContent=`${list.length}명 / 전체 ${D.clients.length}명`;
   $('#cBody').innerHTML=list.length?list.map(c=>{const t=ther(c.therapistId);const b=billFor(c.id,m);const due=totalDue(c.id);
-    return `<tr class="click" onclick="openClient('${c.id}')"><td><b>${esc(c.name)}</b>${c.dx?`<div class="muted tiny">${esc(c.dx)}</div>`:''}</td><td>${age(c.birth)} ${c.gender||''}</td><td>${esc(c.guardian)}<div class="muted tiny">${esc(c.phone)}</div></td><td>${clThers(c).map(ther).filter(Boolean).map(t=>`<div style="white-space:nowrap"><span class="dot" style="background:${t.color}"></span> ${esc(t.name)}</div>`).join('')||'-'}</td><td>${esc(clProgs(c).map(id=>prog(id)?.name).filter(Boolean).join(', ')||'-')}${c.slots?.length?`<div class="muted tiny">${slotText(c.slots)}</div>`:''}</td><td>${c.voucher?`<span class="badge">${esc(c.voucher)}</span>`:'-'}</td><td><span class="badge b-${c.status}">${c.status}</span></td><td class="num">${b.n}</td><td class="num ${due>0?'red':''}">${due?won(due):'-'}</td></tr>`}).join('')
+    return `<tr class="click" onclick="openClient('${c.id}')"><td><b>${esc(cname(c))}</b>${c.dx?`<div class="muted tiny">${esc(c.dx)}</div>`:''}</td><td>${age(c.birth)} ${c.gender||''}</td><td>${esc(c.guardian)}<div class="muted tiny">${esc(c.phone)}</div></td><td>${clThers(c).map(ther).filter(Boolean).map(t=>`<div style="white-space:nowrap"><span class="dot" style="background:${t.color}"></span> ${esc(t.name)}</div>`).join('')||'-'}</td><td>${esc(clProgs(c).map(id=>prog(id)?.name).filter(Boolean).join(', ')||'-')}${c.slots?.length?`<div class="muted tiny">${slotText(c.slots)}</div>`:''}</td><td>${c.voucher?`<span class="badge">${esc(c.voucher)}</span>`:'-'}</td><td><span class="badge b-${c.status}">${c.status}</span></td><td class="num">${b.n}</td><td class="num ${due>0?'red':''}">${due?won(due):'-'}</td></tr>`}).join('')
     :`<tr><td colspan="9" class="empty">${D.clients.length?'검색 결과가 없어요.':'아직 등록된 이용자가 없어요. ＋ 이용자 등록을 눌러 시작하세요.'}</td></tr>`;
 }
 $('#cSearch').oninput=renderClients;$('#cStatusF').onchange=renderClients;$('#cTherF').onchange=renderClients;
@@ -992,6 +995,7 @@ function saveClient(){
   v.status=$('#clStatus').value;v.therapistId=$('#clTher').value;v.programIds=[...document.querySelectorAll('#clProgs input:checked')].map(i=>i.value);v.programId=v.programIds[0]||'';
   v.slots=slotsDraft.filter(x=>x.time).sort((a,b)=>((a.dow+6)%7-(b.dow+6)%7)||a.time.localeCompare(b.time));
   if(!v.name)return toast('이름을 입력하세요');
+  if(!v.birth&&D.clients.some(x=>x!==editCl&&(x.name||'').trim()==v.name))return toast('같은 이름의 이용자가 있어요. 구분할 수 있게 생년월일을 넣어주세요');
   const sig=c=>JSON.stringify([c.slots||[],c.status,c.therapistId,c.programIds||c.programId,c.start]);const before=editCl?sig(editCl):null;
   if(editCl)Object.assign(editCl,v);else{v.id=uid();v.created=ymd(new Date());D.clients.push(v);editCl=v}
   let msg='이용자 정보를 저장했어요';
@@ -1017,10 +1021,10 @@ function renderPay(){
   let rows=[...ids].map(client).filter(c=>c&&(!th||clThers(c).includes(th))).map(c=>{const b=billFor(c.id,m,inc);const p=paidFor(c.id,m);return{c,...b,paid:p,due:b.bill-p}}).filter(r=>r.n||r.paid).sort((a,b)=>b.due-a.due||a.c.name.localeCompare(b.c.name));
   const sum=k=>rows.reduce((s,r)=>s+r[k],0);
   $('#sBill').textContent=won(sum('bill'));$('#sPaid').textContent=won(sum('paid'));$('#sDue').textContent=won(sum('due'));$('#sSess').textContent=sum('n');
-  $('#payBody').innerHTML=rows.length?rows.map(r=>{const t=ther(r.c.therapistId);return `<tr><td><b class="click" style="cursor:pointer" onclick="openClient('${r.c.id}')">${esc(r.c.name)}</b>${r.c.voucher?` <span class="badge">${esc(r.c.voucher)}</span>`:''}</td><td>${esc(t?.name||'-')}</td><td class="num">${r.n}</td><td class="num">${won(r.bill)}</td><td class="num green">${won(r.paid)}</td><td class="num ${r.due>0?'red':''}"><b>${won(r.due)}</b></td><td>${r.due>0?`<button class="btn sm pri" onclick="openPayment('${r.c.id}','${m}',${r.due})">수납</button>`:r.due<0?'<span class="badge">선납/과납</span>':'<span class="badge b-완료">완납</span>'}</td></tr>`}).join('')
+  $('#payBody').innerHTML=rows.length?rows.map(r=>{const t=ther(r.c.therapistId);return `<tr><td><b class="click" style="cursor:pointer" onclick="openClient('${r.c.id}')">${esc(cname(r.c))}</b>${r.c.voucher?` <span class="badge">${esc(r.c.voucher)}</span>`:''}</td><td>${esc(t?.name||'-')}</td><td class="num">${r.n}</td><td class="num">${won(r.bill)}</td><td class="num green">${won(r.paid)}</td><td class="num ${r.due>0?'red':''}"><b>${won(r.due)}</b></td><td>${r.due>0?`<button class="btn sm pri" onclick="openPayment('${r.c.id}','${m}',${r.due})">수납</button>`:r.due<0?'<span class="badge">선납/과납</span>':'<span class="badge b-완료">완납</span>'}</td></tr>`}).join('')
     :`<tr><td colspan="7" class="empty">이 달에 청구할 일정이 없어요. 일정 상태를 '완료'로 바꾸면 청구액에 잡혀요.</td></tr>`;
   const pl=D.payments.filter(p=>p.month==m&&(!th||clThers(client(p.clientId)||{}).includes(th))).sort((a,b)=>b.date.localeCompare(a.date));
-  $('#payList').innerHTML=pl.length?pl.map(p=>`<tr><td>${p.date}</td><td>${esc(client(p.clientId)?.name||'(삭제됨)')}</td><td>${p.month}</td><td>${p.method}</td><td class="num"><b>${won(p.amount)}</b></td><td class="muted">${esc(p.memo)}</td><td style="white-space:nowrap"><button class="btn sm" onclick="receipt('${p.id}')">영수증</button> <button class="btn sm danger" onclick="delPay('${p.id}')">삭제</button></td></tr>`).join('')
+  $('#payList').innerHTML=pl.length?pl.map(p=>`<tr><td>${p.date}</td><td>${esc(cname(client(p.clientId))||'(삭제됨)')}</td><td>${p.month}</td><td>${p.method}</td><td class="num"><b>${won(p.amount)}</b></td><td class="muted">${esc(p.memo)}</td><td style="white-space:nowrap"><button class="btn sm" onclick="receipt('${p.id}')">영수증</button> <button class="btn sm danger" onclick="delPay('${p.id}')">삭제</button></td></tr>`).join('')
     :'<tr><td colspan="7" class="empty">수납 내역이 없어요.</td></tr>';
 }
 function openPayment(cid,month,amt){
@@ -1039,7 +1043,7 @@ function delPay(id){if(!confirm('이 수납 내역을 삭제할까요?'))return;
 function receipt(id){const p=D.payments.find(x=>x.id==id);const c=client(p.clientId)||{};const evs=D.events.filter(e=>e.clientId==p.clientId&&e.date.startsWith(p.month)&&BILLABLE.includes(e.status)).sort((a,b)=>a.date.localeCompare(b.date));
   const r=$('#p-receipt');r.innerHTML=`<div style="max-width:560px;margin:30px auto;border:2px solid var(--ink);padding:28px;background:#fff">
   <h2 style="text-align:center;font-size:22px;letter-spacing:8px;margin-bottom:20px">영 수 증</h2>
-  <table><tr><th>이용자</th><td>${esc(c.name)}</td><th>대상 월</th><td>${p.month}</td></tr><tr><th>수납일</th><td>${p.date}</td><th>결제 방법</th><td>${p.method}</td></tr>
+  <table><tr><th>이용자</th><td>${esc(cname(c))}</td><th>대상 월</th><td>${p.month}</td></tr><tr><th>수납일</th><td>${p.date}</td><th>결제 방법</th><td>${p.method}</td></tr>
   <tr><th>프로그램</th><td colspan="3">${esc([...new Set(evs.map(e=>prog(e.programId)?.name).filter(Boolean))].join(', ')||prog(c.programId)?.name||'')} ${evs.length}회기 (${evs.map(e=>e.date.slice(8)).join(', ')}일)</td></tr>
   <tr><th>금액</th><td colspan="3" style="font-size:18px"><b>${won(p.amount)}원</b></td></tr></table>
   <p style="text-align:center;margin-top:24px">위 금액을 정히 영수합니다.</p><p style="text-align:center;font-weight:700;font-size:16px;margin-top:20px">${esc(D.center)}</p></div>`;
@@ -1089,7 +1093,7 @@ function renderGen(){const m=$('#gnMonth').value;if(!m)return;const[y,mo]=m.spli
   for(let i=1;i<=n;i++){const k=m+'-'+pad(i),dw=(first+i-1)%7;h+=`<div class="d ${hol.has(k)?'off':''} ${dw==0?'sun':dw==6?'sat':''}" onclick="toggleHol('${k}')">${i}</div>`}
   $('#gnCal').innerHTML=`<div class="mini">${h}</div><div class="muted tiny" style="margin-top:6px">휴무일 ${[...hol].filter(k=>k.startsWith(m)).length}일 · 공휴일도 눌러서 빼주세요</div>`;
   const plan=gnPlan();if(!gnInit){gnSel=new Set(plan.filter(r=>r.make.length).map(r=>r.c.id));gnInit=true}
-  $('#gnBody').innerHTML=plan.length?plan.map(r=>`<tr><td><input type="checkbox" ${gnSel.has(r.c.id)&&r.make.length?'checked':''} ${r.make.length?'':'disabled'} onchange="this.checked?gnSel.add('${r.c.id}'):gnSel.delete('${r.c.id}');renderGen()"></td><td><b>${esc(r.c.name)}</b></td><td class="tiny">${slotText(r.c.slots)}</td><td class="num">${r.make.length||'<span class="muted tiny">완료</span>'}</td><td class="num muted">${r.exist||'-'}</td><td class="num">${won(r.fee)}</td></tr>`).join('')
+  $('#gnBody').innerHTML=plan.length?plan.map(r=>`<tr><td><input type="checkbox" ${gnSel.has(r.c.id)&&r.make.length?'checked':''} ${r.make.length?'':'disabled'} onchange="this.checked?gnSel.add('${r.c.id}'):gnSel.delete('${r.c.id}');renderGen()"></td><td><b>${esc(cname(r.c))}</b></td><td class="tiny">${slotText(r.c.slots)}</td><td class="num">${r.make.length||'<span class="muted tiny">완료</span>'}</td><td class="num muted">${r.exist||'-'}</td><td class="num">${won(r.fee)}</td></tr>`).join('')
     :'<tr><td colspan="6" class="empty">정기 수업 시간이 등록된 \'이용중\' 이용자가 없어요.<br>이용자 정보에서 정기 수업 시간을 먼저 넣어주세요.</td></tr>';
   const sel=plan.filter(r=>gnSel.has(r.c.id)&&r.make.length);$('#gnAll').checked=sel.length&&sel.length==plan.filter(r=>r.make.length).length;
   if(plan.length&&plan.every(r=>!r.make.length)){$('#gnSum').innerHTML=`<b class="green">이 달 정기 일정은 이미 모두 만들어져 있어요</b> (${plan.reduce((s,r)=>s+r.exist,0)}건). 달력에서 확인하세요.`;return}
@@ -1127,12 +1131,12 @@ function renderLog(){
   $('#lgDone').textContent=done.length;$('#lgWritten').textContent=wr;$('#lgMissing').textContent=done.length-wr;$('#lgRate').textContent=done.length?Math.round(wr/done.length*100)+'%':'-';
   if(only)evs=evs.filter(e=>!hasLog(e));
   evs.sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
-  $('#logBody').innerHTML=evs.length?evs.map(e=>{const c=client(e.clientId),t=ther(e.therapistId);return `<tr class="click" onclick="openLog('${e.id}')"><td>${e.date.slice(5).replace('-','/')} (${DOW[parse(e.date).getDay()]})</td><td>${ampm(e.time)}</td><td><b>${esc(c?.name||'(삭제됨)')}</b></td><td>${esc(prog(e.programId)?.name||'-')}</td><td>${esc(t?.name||'-')}</td><td><span class="badge b-${e.status.replace(/[()]/g,'')}">${e.status}</span></td><td>${hasLog(e)?'<span class="badge b-완료">작성</span>':'<span class="badge b-취소">미작성</span>'}</td><td><button class="btn sm ${hasLog(e)?'':'pri'}" onclick="event.stopPropagation();openLog('${e.id}')">${hasLog(e)?'보기':'작성'}</button></td></tr>`}).join('')
+  $('#logBody').innerHTML=evs.length?evs.map(e=>{const c=client(e.clientId),t=ther(e.therapistId);return `<tr class="click" onclick="openLog('${e.id}')"><td>${e.date.slice(5).replace('-','/')} (${DOW[parse(e.date).getDay()]})</td><td>${ampm(e.time)}</td><td><b>${esc(cname(c)||'(삭제됨)')}</b></td><td>${esc(prog(e.programId)?.name||'-')}</td><td>${esc(t?.name||'-')}</td><td><span class="badge b-${e.status.replace(/[()]/g,'')}">${e.status}</span></td><td>${hasLog(e)?'<span class="badge b-완료">작성</span>':'<span class="badge b-취소">미작성</span>'}</td><td><button class="btn sm ${hasLog(e)?'':'pri'}" onclick="event.stopPropagation();openLog('${e.id}')">${hasLog(e)?'보기':'작성'}</button></td></tr>`}).join('')
     :`<tr><td colspan="8" class="empty">이 달에 일지를 쓸 회기가 없어요. 오늘까지의 예정·완료 회기가 여기에 나와요.${me&&!me.admin?'<br>(담당 아동의 회기만 보여요)':''}</td></tr>`;
 }
 function openLog(id){
   editLog=D.events.find(e=>e.id==id);if(!editLog)return;if(!canLog(editLog)){editLog=null;return toast('담당 선생님만 이 일지를 볼 수 있어요')}const e=editLog,l=logOf(e)||{},c=client(e.clientId);
-  $('#lgHead').textContent=`치료 일지 · ${c?.name||''}`;
+  $('#lgHead').textContent=`치료 일지 · ${cname(c)}`;
   $('#lgInfo').textContent=`${e.date} (${DOW[parse(e.date).getDay()]}) ${ampm(e.time)} · ${prog(e.programId)?.name||''} · ${ther(e.therapistId)?.name||'담당 없음'} · ${e.status}`;
   LOGF.forEach(([k,id])=>$('#'+id).value=l[k]??'');
   $('#lgDoneWrap').style.display=e.status=='예정'?'':'none';$('#lgSetDone').checked=true;
@@ -1154,7 +1158,7 @@ function printLogs(){const cl=$('#logClientF').value;if(!cl)return toast('위에
   if(!evs.length)return toast('이 달에 작성된 일지가 없어요');
   const row=(k,v)=>v?`<tr><th style="width:110px">${k}</th><td style="white-space:pre-wrap">${esc(v)}</td></tr>`:'';
   const r=$('#p-receipt');r.innerHTML=`<div style="max-width:720px;margin:20px auto;background:#fff;padding:10px">
-  <h2 style="text-align:center;font-size:20px">치료 일지 — ${esc(c.name)} (${m})</h2>
+  <h2 style="text-align:center;font-size:20px">치료 일지 — ${esc(cname(c))} (${m})</h2>
   <p style="text-align:center" class="muted">${esc(D.center)} · ${esc(clProgs(c).map(id=>prog(id)?.name).filter(Boolean).join(', '))} · 담당 ${esc(clThers(c).map(id=>ther(id)?.name).filter(Boolean).join(', '))}</p>
   ${evs.map((e,i)=>`<h3 style="font-size:14px;margin:18px 0 6px">${i+1}회기 · ${e.date} (${DOW[parse(e.date).getDay()]}) ${ampm(e.time)}</h3><table style="border:1px solid #ccc">${(l=>row('회기 목표',l.goal)+row('활동 내용',l.act)+row('반응 및 수행',l.resp)+row('정반응률',l.pct?l.pct+'%':'')+row('가정 과제',l.hw)+row('보호자 상담',l.consult)+row('다음 계획',l.next))(logOf(e))}</table>`).join('')}</div>`;
   r.classList.add('print');window.print();setTimeout(()=>r.classList.remove('print'),500)}
@@ -1211,7 +1215,7 @@ const AS_TYPES=['초기상담','언어평가','재평가','보호자상담','종
 let editAs=null;
 function asOwner(tid){const t=ther(tid);return (t&&t.email?t.email:(me?.email||'')).toLowerCase()}
 function canAs(a){if(!me||me.admin)return true;return (a.owner||'')==me.email.toLowerCase()}
-function asWhoName(a){return a.clientId?(client(a.clientId)?.name||'(삭제됨)'):a.inquiryId?((D.inquiries||[]).find(x=>x.id==a.inquiryId)?.name||'')+' (상담 문의)':''}
+function asWhoName(a){return a.clientId?(cname(client(a.clientId))||'(삭제됨)'):a.inquiryId?((D.inquiries||[]).find(x=>x.id==a.inquiryId)?.name||'')+' (상담 문의)':''}
 ['asClientF','asTypeF'].forEach(id=>$('#'+id).onchange=()=>renderAs());
 function renderAs(){const cf=$('#asClientF').value,tf=$('#asTypeF').value;
   $('#asClientF').innerHTML=opts(D.clients.slice().sort((a,b)=>a.name.localeCompare(b.name)),cf,'대상 전체');
@@ -1223,7 +1227,7 @@ function openAs(id,preset={}){editAs=id?(D.assess||[]).find(a=>a.id==id):null;co
   $('#asType').innerHTML=AS_TYPES.map(t=>`<option ${t==(a.type||'언어평가')?'selected':''}>${t}</option>`).join('');
   $('#asTher').innerHTML=opts(D.therapists,a.therapistId||myTher()?.id,'-');
   const inqs=(D.inquiries||[]).filter(x=>!x.clientId);
-  $('#asWho').innerHTML='<option value="">대상 선택</option><optgroup label="이용자">'+D.clients.slice().sort((x,y)=>x.name.localeCompare(y.name)).map(c=>`<option value="c:${c.id}" ${a.clientId==c.id?'selected':''}>${esc(c.name)}</option>`).join('')+'</optgroup>'+
+  $('#asWho').innerHTML='<option value="">대상 선택</option><optgroup label="이용자">'+D.clients.slice().sort((x,y)=>x.name.localeCompare(y.name)).map(c=>`<option value="c:${c.id}" ${a.clientId==c.id?'selected':''}>${esc(cname(c))}</option>`).join('')+'</optgroup>'+
     (inqs.length?'<optgroup label="상담 문의(미등록)">'+inqs.map(x=>`<option value="i:${x.id}" ${a.inquiryId==x.id?'selected':''}>${esc(x.name)}</option>`).join('')+'</optgroup>':'');
   $('#asDate').value=a.date||ymd(new Date());$('#asTools').value=a.tools||'';$('#asResult').value=a.result||'';$('#asSummary').value=a.summary||'';$('#asRec').value=a.rec||'';
   $('#asDel').style.display=editAs?'':'none';openM('mAs')}
@@ -1283,7 +1287,7 @@ function renderMs(){const m=ym(msCur);$('#msTitle').textContent=`${msCur.getFull
   const R=msRows(),tot={};STATS.forEach(s=>tot[s]=R.reduce((a,r)=>a+r.cnt[s],0));const n=R.reduce((a,r)=>a+r.evs.length,0);
   $('#msSum').innerHTML=`<b>총 ${n}회기</b> <span class="muted">— ${stText(tot)||'일정 없음'}</span><span style="float:right">이용자 <b>${new Set(R.map(r=>r.c.id)).size}</b>명 · 금액 합계 <b>${won(R.reduce((a,r)=>a+r.amt,0))}</b>원</span>`;
   $('#msBody').innerHTML=R.length?R.map(r=>`<tr class="click" onclick="msOpen.has('${r.key}')?msOpen.delete('${r.key}'):msOpen.add('${r.key}');renderMs()">
-    <td><b>${esc(r.c.name)}</b><div class="muted tiny">${r.c.birth||''}</div></td><td>${r.t?`<span class="dot" style="background:${r.t.color}"></span> ${esc(r.t.name)}`:'-'}</td>
+    <td><b>${esc(cname(r.c))}</b><div class="muted tiny">${r.c.birth||''}</div></td><td>${r.t?`<span class="dot" style="background:${r.t.color}"></span> ${esc(r.t.name)}`:'-'}</td>
     <td>${r.c.voucher?`<span class="badge">${esc(r.c.voucher)}</span>`:'<span class="badge">일반</span>'}</td><td>${esc(r.p?.name||'-')}${r.p?.group?' <span class="muted tiny">그룹</span>':''}</td>
     <td class="tiny">${r.dur||''}분 (${won(r.fee)}원)${r.c.voucher&&r.c.copay!==''&&r.c.copay!=null?`<div class="muted">본인부담 ${won(r.c.copay)}원</div>`:''}</td>
     <td class="num"><b>${r.evs.length}</b></td><td class="tiny">${stText(r.cnt)}</td>
@@ -1300,7 +1304,7 @@ function printMsList(){const R=msRows();if(!R.length)return toast('인쇄할 내
   <p style="text-align:center;margin:0 0 10px" class="muted">${esc(D.center)} ${msFilterText()?'· '+esc(msFilterText()):''} · 출력일 ${ymd(new Date())}</p>
   <p style="margin:0 0 6px"><b>총 ${R.reduce((a,r)=>a+r.evs.length,0)}회기</b> — ${stText(tot)} · 금액 합계 ${won(R.reduce((a,r)=>a+r.amt,0))}원</p>
   <table><thead><tr><th>No</th><th>이용자</th><th>생년월일</th><th>선생님</th><th>구분</th><th>프로그램</th><th>시간(비용)/1회</th><th>총회기</th><th>진행상태</th><th>날짜</th><th>금액</th></tr></thead><tbody>
-  ${R.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.c.name)}</td><td>${r.c.birth||''}</td><td>${esc(r.t?.name||'')}</td><td>${esc(r.c.voucher||'일반')}</td><td>${esc(r.p?.name||'')}</td><td>${r.dur||''}분 (${won(r.fee)}원)</td><td style="text-align:right">${r.evs.length}</td><td>${stText(r.cnt)}</td><td>${r.evs.map(e=>+e.date.slice(8)+(e.status=='예정'?'':`(${ST_SHORT[e.status]})`)).join(', ')}</td><td style="text-align:right">${won(r.amt)}</td></tr>`).join('')}
+  ${R.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(cname(r.c))}</td><td>${r.c.birth||''}</td><td>${esc(r.t?.name||'')}</td><td>${esc(r.c.voucher||'일반')}</td><td>${esc(r.p?.name||'')}</td><td>${r.dur||''}분 (${won(r.fee)}원)</td><td style="text-align:right">${r.evs.length}</td><td>${stText(r.cnt)}</td><td>${r.evs.map(e=>+e.date.slice(8)+(e.status=='예정'?'':`(${ST_SHORT[e.status]})`)).join(', ')}</td><td style="text-align:right">${won(r.amt)}</td></tr>`).join('')}
   </tbody></table><p class="muted" style="font-size:11px">날짜 옆 표시: 완=완료, 취=취소, 보=취소(보강), 이=취소(이월), 표시 없음=예정</p></div>`,true)}
 function calGrid(m,cellFn,big){const[y,mo]=m.split('-').map(Number),first=new Date(y,mo-1,1).getDay(),n=new Date(y,mo,0).getDate(),hol=new Set(D.holidays||[]);
   let cells='';for(let i=0;i<first;i++)cells+='<td class="cx"></td>';
@@ -1312,7 +1316,7 @@ const PCAL_CSS=`.pcal{width:100%;border-collapse:collapse;table-layout:fixed}.pc
 .pcal td.hol{background:#fdeeea!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pcal .cn{font-weight:700;font-size:12px}.pcal .it{font-size:10.5px;line-height:1.3;margin-top:2px;padding:1px 3px;border-radius:3px;border-left:3px solid #e0b636;background:#fffbe8;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .pcal .it.x{text-decoration:line-through;color:#999;border-left-color:#d9604c}.pcal .it.ok{border-left-color:#5a9e6f}.sun{color:#d9604c}.sat{color:#5b84c4}`;
 function calItem(e,showName){const t=ther(e.therapistId);const cls=e.status.startsWith('취소')?'x':e.status=='완료'?'ok':'';
-  return `<div class="it ${cls}" style="${t?`border-left-color:${t.color}`:''}">${e.time||''} ${showName?esc(client(e.clientId)?.name||e.title||''):esc(prog(e.programId)?.name||'')}${e.status!='예정'?` <b>${ST_SHORT[e.status]}</b>`:''}</div>`}
+  return `<div class="it ${cls}" style="${t?`border-left-color:${t.color}`:''}">${e.time||''} ${showName?esc(cname(client(e.clientId))||e.title||''):esc(prog(e.programId)?.name||'')}${e.status!='예정'?` <b>${ST_SHORT[e.status]}</b>`:''}</div>`}
 function printMsCalendar(){const R=msRows();if(!R.length)return toast('인쇄할 내용이 없어요');const m=ym(msCur);const evs=R.flatMap(r=>r.evs);
   const by={};evs.forEach(e=>(by[e.date]=by[e.date]||[]).push(e));Object.values(by).forEach(a=>a.sort((x,y)=>(x.time||'').localeCompare(y.time||'')));
   printPage(`<style>${PCAL_CSS}</style><div style="background:#fff"><h2 style="text-align:center;margin:0 0 4px">${msCur.getFullYear()}년 ${msCur.getMonth()+1}월 서비스 일정</h2>
@@ -1326,7 +1330,7 @@ function printMsStatements(){const R=msRows();if(!R.length)return toast('인쇄�
     const cnt={};STATS.forEach(st=>cnt[st]=evs.filter(e=>e.status==st).length);
     return `<div class="pb" style="background:#fff">
     <h2 style="text-align:center;margin:0 0 10px">${msCur.getFullYear()}년 ${msCur.getMonth()+1}월 서비스 일정표</h2>
-    <table style="margin-bottom:8px"><tr><th style="width:80px">이용자</th><td>${esc(c.name)}${c.birth?` (${c.birth})`:''}</td><th style="width:70px">구분</th><td>${esc(c.voucher||'일반')}</td></tr>
+    <table style="margin-bottom:8px"><tr><th style="width:80px">이용자</th><td>${esc(cname(c))}${c.birth?` (${c.birth})`:''}</td><th style="width:70px">구분</th><td>${esc(c.voucher||'일반')}</td></tr>
     <tr><th>프로그램</th><td colspan="3">${rs.map(r=>`${esc(r.p?.name||'')} · ${esc(r.t?.name||'')} · ${r.dur||''}분 · ${won(r.fee)}원${c.voucher&&c.copay!==''&&c.copay!=null?` (본인부담 ${won(c.copay)}원)`:''}`).join('<br>')}</td></tr></table>
     ${calGrid(m,k=>(dm[k]||[]).map(e=>calItem(e,false)).join(''))}
     <table style="margin-top:8px"><tr><th style="width:110px">총 회기</th><td>${evs.length}회 — ${stText(cnt)}</td><th style="width:90px">이용 금액</th><td style="text-align:right"><b>${won(amt)}원</b></td></tr>
@@ -1354,7 +1358,7 @@ function renderStatus(){renderMs();
     const me_=D.events.filter(e=>e.therapistId==t.id&&e.date.startsWith(m));const wk=cl.reduce((s,c)=>s+(c.slots||[]).filter(x=>(x.therapistId||c.therapistId)==t.id).length,0);
     return `<div class="card"><h2><span class="dot" style="background:${t.color}"></span> ${esc(t.name)} <span class="muted tiny">${esc(t.role||'')}</span></h2>
     <div class="row tiny" style="gap:14px;margin-bottom:8px"><span>이용 아동 <b>${cl.length}</b>명</span><span>주간 정기 <b>${wk}</b>회</span><span>이번 달 완료 <b>${me_.filter(e=>e.status=='완료').length}</b> / 예정 <b>${me_.filter(e=>e.status=='예정').length}</b> / 취소 <b>${me_.filter(e=>e.status.startsWith('취소')).length}</b></span></div>
-    ${cl.length?`<table>${cl.map(c=>`<tr class="click" onclick="openClient('${c.id}')"><td><b>${esc(c.name)}</b> <span class="muted tiny">${age(c.birth)}</span></td><td class="tiny">${esc([...new Set((c.slots||[]).filter(x=>(x.therapistId||c.therapistId)==t.id).map(x=>x.programId||c.programId))].map(id=>prog(id)?.name).filter(Boolean).join(', ')||prog(c.programId)?.name||'')}</td><td class="tiny muted">${slotText((c.slots||[]).filter(x=>(x.therapistId||c.therapistId)==t.id))}</td></tr>`).join('')}</table>`:'<div class="muted tiny">담당 아동이 없어요.</div>'}</div>`}).join('');
+    ${cl.length?`<table>${cl.map(c=>`<tr class="click" onclick="openClient('${c.id}')"><td><b>${esc(cname(c))}</b> <span class="muted tiny">${age(c.birth)}</span></td><td class="tiny">${esc([...new Set((c.slots||[]).filter(x=>(x.therapistId||c.therapistId)==t.id).map(x=>x.programId||c.programId))].map(id=>prog(id)?.name).filter(Boolean).join(', ')||prog(c.programId)?.name||'')}</td><td class="tiny muted">${slotText((c.slots||[]).filter(x=>(x.therapistId||c.therapistId)==t.id))}</td></tr>`).join('')}</table>`:'<div class="muted tiny">담당 아동이 없어요.</div>'}</div>`}).join('');
   // 일별 접수
   const rm=ym(rcCur),th=$('#rcTherF').value;$('#rcTherF').innerHTML=opts(D.therapists,th,'담당 전체');$('#rcTitle').textContent=`${rcCur.getFullYear()}년 ${rcCur.getMonth()+1}월`;
   const n=new Date(rcCur.getFullYear(),rcCur.getMonth()+1,0).getDate();let rows=[],tot={kids:new Set(),done:0,cx:0},max=1;
@@ -1367,7 +1371,7 @@ function renderStatus(){renderMs();
   const vc=D.clients.filter(c=>c.voucher).sort((a,b)=>a.name.localeCompare(b.name));
   $('#vuBody').innerHTML=vc.length?vc.map(c=>{const v=(D.vouchers||[]).find(x=>x.name==c.voucher)||{};const ev=D.events.filter(e=>e.clientId==c.id&&e.date.startsWith(vm)&&e.status=='완료');
     const total=ev.reduce((s,e)=>s+(Number(e.fee)||0),0),self=ev.reduce((s,e)=>s+evFeeFor(e),0),gov=total-self,sup=Number(v.support)||0,left=sup?sup-gov:null;
-    return `<tr class="click" onclick="openClient('${c.id}')"><td><b>${esc(c.name)}</b></td><td><span class="badge">${esc(c.voucher)}</span></td><td class="num">${ev.length}</td><td class="num">${won(total)}</td><td class="num">${won(self)}</td><td class="num">${won(gov)}</td><td class="num">${sup?won(sup):'<span class="muted">미설정</span>'}</td><td class="num ${left!=null&&left<0?'red':''}">${left==null?'-':(left<0?'초과 ':'')+won(Math.abs(left))}</td></tr>`}).join('')
+    return `<tr class="click" onclick="openClient('${c.id}')"><td><b>${esc(cname(c))}</b></td><td><span class="badge">${esc(c.voucher)}</span></td><td class="num">${ev.length}</td><td class="num">${won(total)}</td><td class="num">${won(self)}</td><td class="num">${won(gov)}</td><td class="num">${sup?won(sup):'<span class="muted">미설정</span>'}</td><td class="num ${left!=null&&left<0?'red':''}">${left==null?'-':(left<0?'초과 ':'')+won(Math.abs(left))}</td></tr>`}).join('')
     :'<tr><td colspan="8" class="empty">바우처 이용자가 없어요. 이용자 정보에서 바우처를 선택하세요.</td></tr>';
 }
 
