@@ -435,6 +435,16 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
       </div>
     </div>
     <div class="card span2">
+      <h2>내 계정</h2>
+      <p class="muted tiny" style="margin-top:-6px">로그인한 계정: <b id="myEmail">-</b> · 처음 받은 임시 비밀번호는 여기서 바꿔주세요.</p>
+      <div class="row">
+        <input type="password" id="pw1" placeholder="새 비밀번호 (6자 이상)" autocomplete="new-password" style="width:200px">
+        <input type="password" id="pw2" placeholder="새 비밀번호 확인" autocomplete="new-password" style="width:200px">
+        <button class="btn pri" onclick="changePw()">비밀번호 바꾸기</button>
+        <button class="btn" onclick="logout()">로그아웃</button>
+      </div>
+    </div>
+    <div class="card span2">
       <h2>바우처 관리</h2>
       <p class="muted tiny" style="margin-top:-6px">이용자 정보에서 바우처를 고르면 회당 본인부담금이 자동으로 채워지고, 현황 → 바우처 사용에서 월 지원금 잔액을 볼 수 있어요.</p>
       <div id="vouList"></div>
@@ -448,7 +458,6 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
         <label class="btn">백업 파일 불러오기<input type="file" accept=".json" onchange="importData(this)" hidden></label>
         <button class="btn" onclick="loadSample()">예시 데이터 넣기</button>
         <span class="grow"></span>
-        <button class="btn" onclick="logout()">로그아웃</button>
         <button class="btn danger" onclick="resetAll()">전체 초기화</button>
       </div>
     </div>
@@ -1433,8 +1442,15 @@ const isGroupProg=id=>!!prog(id)?.group;
 function groupKey(e){return isGroupProg(e.programId)&&e.clientId?[e.date,e.time,e.therapistId,e.programId].join('|'):null}
 function groupMates(e){const k=groupKey(e);return k?D.events.filter(x=>groupKey(x)==k):[e]}
 
+/* ---------- 내 계정 ---------- */
+async function changePw(){const a=$('#pw1').value,b=$('#pw2').value;
+  if(!me)return toast('로그인한 뒤 바꿀 수 있어요');if(a.length<6)return toast('비밀번호는 6자 이상으로 해주세요');if(a!==b)return toast('두 비밀번호가 서로 달라요');
+  const{error}=await sb.auth.updateUser({password:a});
+  if(error){console.error(error);return toast(/same|different/i.test(error.message)?'지금 비밀번호와 다른 걸로 정해주세요':/weak|short|length/i.test(error.message)?'더 길거나 복잡한 비밀번호로 해주세요':'비밀번호를 바꾸지 못했어요. 다시 로그인한 뒤 해보세요')}
+  $('#pw1').value=$('#pw2').value='';toast('비밀번호를 바꿨어요. 다음 로그인부터 새 비밀번호를 쓰세요')}
+
 /* ---------- 설정 ---------- */
-function renderSettings(){renderVouchers();
+function renderSettings(){renderVouchers();$('#myEmail').textContent=me?.email||'로그인 안 됨';
   $('#setName').value=D.center;$('#setAuto').checked=D.autoGen!==false;
   $('#therList').innerHTML=D.therapists.map(t=>`<div class="row" style="padding:4px 0"><input type="color" value="${t.color}" style="width:36px;padding:2px" onchange="updT('${t.id}','color',this.value)"><input value="${esc(t.name)}" style="width:90px" onchange="updT('${t.id}','name',this.value)"><input value="${esc(t.role)}" style="width:90px" onchange="updT('${t.id}','role',this.value)"><input type="email" value="${esc(t.email||'')}" placeholder="로그인 이메일" style="width:170px" ${me&&!me.admin?'disabled':''} onchange="setTherEmail('${t.id}',this.value)"><label class="chk tiny"><input type="checkbox" ${t.admin?'checked':''} ${me&&!me.admin?'disabled':''} onchange="setTherAdmin('${t.id}',this.checked)">관리자</label><button class="btn sm danger" onclick="delT('${t.id}')" ${me&&!me.admin?'disabled':''}>삭제</button></div>`).join('');
   $('#progList').innerHTML=D.programs.map(p=>`<div class="row" style="padding:4px 0"><input value="${esc(p.name)}" style="width:110px" onchange="updP('${p.id}','name',this.value)"><input type="number" value="${p.fee}" style="width:90px" onchange="updP('${p.id}','fee',+this.value)"><span class="tiny muted">원</span><input type="number" value="${p.min}" style="width:60px" onchange="updP('${p.id}','min',+this.value)"><span class="tiny muted">분</span><label class="chk tiny"><input type="checkbox" ${p.group?'checked':''} onchange="updP('${p.id}','group',this.checked)">그룹</label><button class="btn sm danger" onclick="delP('${p.id}')">삭제</button></div>`).join('');
