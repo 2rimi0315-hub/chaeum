@@ -34,7 +34,7 @@ function card(p){
  const illustration = programImages[p.id] ? `<img class="program-art-image" src="././${programImages[p.id]}?v=20261028-subject-art" alt="" loading="lazy" decoding="async" width="1100" height="500">` : `<svg viewBox="0 0 168 125" aria-hidden="true">${pic}</svg>`;
  const isExternal=p.mode==='existing-login'||p.mode==='reference'||p.mode==='direct-link';
  const internalTarget=p.mode==='internal'&&typeof p.url==='string'&&/^\.\/[\w\-\/]+(\.html)?$/.test(p.url)?p.url:'';
- const target=internalTarget||(isExternal?safeUrl(p.url):`./program.html?program=${encodeURIComponent(p.id)}`);
+ const target=(p.id==='reading'?'./program.html?program=reading':'')||internalTarget||(isExternal?safeUrl(p.url):`./program.html?program=${encodeURIComponent(p.id)}`);
  const active=!!target;
  const label=p.mode==='reference'?'자료실 열기':'활동 시작하기';
  const badge=p.mode==='reference'?'공개 자료실':'';
