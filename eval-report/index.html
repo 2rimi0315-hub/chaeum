@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#FFD95C">
-<meta name="description" content="채움 평가 보고서 — 검사 도구를 고르고 원점수를 넣으면 등가연령·백분위·결과 기술이 채워지는 언어평가 보고서 작성 도구">
+<meta name="description" content="채움 평가 보고서 — REVT·PRES·LSSC 검사 도구를 고르고 원점수를 넣으면 등가연령·백분위·결과 기술이 채워지는 언어평가 보고서 작성 도구">
 <title>채움 평가 보고서</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -50,6 +50,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--sun-deep
 .res th,.res td{border:1px solid var(--line);padding:7px 8px;text-align:center}
 .res th{background:#FFF4CC;font-weight:700}
 .res td.l{text-align:left}
+.res.in input{padding:5px 4px;text-align:center;min-width:44px;border-radius:7px;background:#fff}
+.res.in th{font-size:12.5px;line-height:1.3}
+.res tr>th:first-child{white-space:nowrap}
+.pdf-in{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
 .tag{display:inline-block;padding:1px 9px;border-radius:99px;font-size:13px;font-weight:700}
 .tag.ok{background:var(--mint);color:var(--mint-deep)} .tag.mid{background:#FFEFD6;color:var(--amber)} .tag.bad{background:var(--coral);color:var(--coral-deep)} .tag.na{background:#eee;color:#777}
 .desc-h{display:flex;align-items:center;gap:8px;margin:12px 0 5px;font-size:13.5px;font-weight:700}
@@ -81,6 +85,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--sun-deep
 .sheet th,.sheet td{border:1px solid #999;padding:5px 7px;text-align:center}
 .sheet th{background:#f3f0e6;font-weight:500}
 .sheet td.l{text-align:left}
+.sheet .res th,.sheet .res td{font-size:11.5px;padding:4px 3px}
 .sheet p{margin:4px 0}
 .sheet .txt{white-space:pre-wrap}
 .sheet ul{margin:4px 0;padding-left:18px}
@@ -283,8 +288,86 @@ const TESTS={
         <tr><th>진단</th><td colspan="4">${tag(dx.c,dx.t)} <small style="color:#8C8270">(언어발달연령 ${how})</small></td></tr></table>`,
       text, sum:`PRES 결과 통합언어 발달연령 ${cla}개월로 ${dx.t}`};
   }
+ },
+ lssc:{
+  short:'LSSC', name:'학령기 아동 언어 검사', ref:'이윤경 외(2014)',
+  inputHTML:()=>`<div class="pdf-in"><label class="chip" style="display:inline-block">📎 인싸이트 결과지 PDF 불러오기<input type="file" accept="application/pdf" data-pdf hidden></label>
+      <span class="hint" data-pdfmsg>인싸이트에서 받은 LSSC 결과 PDF를 올리면 아래 칸이 자동으로 채워져요. 직접 입력해도 돼요.</span></div>
+    <div style="overflow-x:auto"><table class="res in"><tr><th>하위검사</th>${LSSC_SUB.map((s,i)=>`<th title="${s}">${i+1}. ${s.replace(' (보조)','')}</th>`).join('')}</tr>
+      <tr><th>원점수</th>${LSSC_SUB.map((s,i)=>`<td><input data-k="r${i+1}" inputmode="numeric"></td>`).join('')}</tr>
+      <tr><th>환산점수</th>${LSSC_SUB.map((s,i)=>`<td><input data-k="s${i+1}" inputmode="numeric"></td>`).join('')}</tr></table></div>
+    <table class="res in"><tr><th>언어지수</th><th>환산점수 합</th><th>지수</th><th>백분위</th><th>95% 신뢰구간</th></tr>
+      ${LSSC_IDX.map(x=>`<tr><th>${x.nm}</th><td><input data-k="${x.k}_sum" inputmode="numeric"></td><td><input data-k="${x.k}_idx" inputmode="numeric"></td><td><input data-k="${x.k}_pct" inputmode="decimal"></td><td><input data-k="${x.k}_ci" placeholder="예: 67-77"></td></tr>`).join('')}</table>
+    <p class="hint">지수를 넣으면 수준(지체~매우 우수)과 결과 문장이 채워져요. 환산점수 합은 하위검사 환산점수로 자동 확인해요.</p>`,
+  compute(ca,v){
+    const num=x=>x===''||x==null||isNaN(+x)?null:+x;
+    const idx=LSSC_IDX.map(x=>({...x,sum:num(v[x.k+'_sum']),idx:num(v[x.k+'_idx']),pct:num(v[x.k+'_pct']),ci:(v[x.k+'_ci']||'').trim()}));
+    const sub=LSSC_SUB.map((nm,i)=>({nm,r:num(v['r'+(i+1)]),s:num(v['s'+(i+1)])}));
+    if(!idx.some(x=>x.idx!=null)) return {ok:false};
+    // 환산점수 합 확인
+    const warn=[];
+    idx.forEach(x=>{ const ss=x.of.map(n=>sub[n-1].s); if(x.sum!=null&&ss.every(s=>s!=null)){ const t=ss.reduce((a,b)=>a+b,0); if(t!==x.sum) warn.push(`${x.nm} 환산점수 합(${x.sum})이 하위검사 합(${t})과 달라요.`); } });
+    const rows=idx.filter(x=>x.idx!=null).map(x=>{ const L=lsscLevel(x.idx); return `<tr><td>${x.nm}</td><td>${x.sum??'-'}</td><td>${x.idx}</td><td>${x.pct??'-'}</td><td>${x.ci||'-'}</td><td>${tag(L.c,L.t)}</td></tr>`; }).join('');
+    const subT=sub.some(s=>s.s!=null)?`<table class="res"><tr><th>하위검사</th>${sub.map((s,i)=>`<th>${i+1}. ${s.nm.replace(' (보조)','')}</th>`).join('')}</tr>
+      <tr><th>원점수</th>${sub.map(s=>`<td>${s.r??'-'}</td>`).join('')}</tr><tr><th>환산점수</th>${sub.map(s=>`<td>${s.s??'-'}</td>`).join('')}</tr></table>`:'';
+    const g=k=>idx.find(x=>x.k===k), sc=x=>x&&x.idx!=null?`${x.idx}점${x.pct!=null?`(백분위 ${x.pct})`:''}`:null;
+    const T=g('tot'),R=g('rec'),E=g('exp');
+    const lines=[];
+    const main=[R&&R.idx!=null?`수용언어 지수 ${sc(R)}`:null, E&&E.idx!=null?`표현언어 지수 ${sc(E)}`:null, T&&T.idx!=null?`전체언어 지수 ${sc(T)}`:null].filter(Boolean);
+    if(main.length) lines.push(`${main.join(', ')}으로${T&&T.idx!=null?` 전체언어는 '${lsscLevel(T.idx).t}' 수준에 해당함.`:' 나타남.'}`);
+    const dom=['sem','gram','prag','mem'].map(g).filter(x=>x&&x.idx!=null);
+    if(dom.length){
+      lines.push(`영역별 언어지수는 ${dom.map(x=>`${x.nm} ${x.idx}점(${lsscLevel(x.idx).t})`).join(', ')}으로 나타남.`);
+      const core=dom.filter(x=>x.k!=='mem');
+      if(core.length>1){ const hi=core.reduce((a,b)=>b.idx>a.idx?b:a), lo=core.reduce((a,b)=>b.idx<a.idx?b:a); if(hi.idx-lo.idx>=10) lines.push(`영역 중 ${hi.nm}이(가) 상대적 강점, ${lo.nm}이(가) 상대적 약점으로 보임.`); }
+    }
+    const weak=sub.filter(s=>s.s!=null&&s.s<=7), strong=sub.filter(s=>s.s!=null&&s.s>=13);
+    if(weak.length) lines.push(`하위검사 중 ${weak.map(s=>`${s.nm.replace(' (보조)','')}(${s.s})`).join(', ')}에서 환산점수가 7 이하로 평균보다 1표준편차 이상 낮게 나타남.`);
+    if(strong.length) lines.push(`${strong.map(s=>`${s.nm.replace(' (보조)','')}(${s.s})`).join(', ')}은(는) 평균보다 높게 나타남.`);
+    return {ok:true,
+      table:`<table class="res"><tr><th>언어지수</th><th>환산점수 합</th><th>지수</th><th>백분위</th><th>95% 신뢰구간</th><th>수준</th></tr>${rows}</table>${subT}${warn.length?`<p class="hint" style="color:var(--coral-deep)">${warn.join(' ')}</p>`:''}`,
+      text:lines.join('\n'),
+      sum:`LSSC 결과 ${T&&T.idx!=null?`전체언어 지수 ${T.idx}점으로 ${lsscLevel(T.idx).t}`:'언어지수 산출'}${R&&R.idx!=null&&E&&E.idx!=null?`(수용 ${R.idx}점, 표현 ${E.idx}점)`:''}`};
+  },
+  async importPdf(file){
+    const pdfjs=await loadPdfJs();
+    const doc=await pdfjs.getDocument({data:await file.arrayBuffer(), cMapUrl:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/', cMapPacked:true}).promise;
+    const out={v:{},info:{}};
+    for(let p=1;p<=doc.numPages;p++){
+      const tc=await (await doc.getPage(p)).getTextContent();
+      const chars=tc.items.filter(i=>i.str&&i.str.trim()).map(i=>({s:i.str.trim(),x:i.transform[4],y:i.transform[5]}));
+      // 같은 줄(y)로 묶은 뒤, 글자 사이가 가까우면 한 칸(토큰)으로 합침 (결과지는 글자 단위로 쪼개져 있음)
+      const rows=[]; chars.sort((a,b)=>b.y-a.y||a.x-b.x).forEach(it=>{ const r=rows.find(r=>Math.abs(r.y-it.y)<3); r?r.c.push(it):rows.push({y:it.y,c:[it]}); });
+      rows.forEach(r=>{ r.c.sort((a,b)=>a.x-b.x); r.items=[]; let last=null;
+        r.c.forEach(ch=>{ if(last&&ch.x-last.x<12){ last.tok.s+=ch.s; } else { r.items.push({s:ch.s,x:ch.x,y:ch.y}); } last={x:ch.x,tok:r.items[r.items.length-1]}; }); });
+      const items=rows.flatMap(r=>r.items);
+      const clean=s=>s.replace(/(\d)\s+(?=\d)/g,'$1');
+      // 언어지수 표: 5칸(합, 지수, 백분위, 90% CI, 95% CI)
+      const idxRows=rows.filter(r=>r.items.length===5&&/^\d+\s*-\s*\d+$/.test(clean(r.items[3].s))&&/^\d+\s*-\s*\d+$/.test(clean(r.items[4].s)));
+      if(idxRows.length===7) idxRows.forEach((r,i)=>{ const k=LSSC_IDX[i].k, c=r.items.map(it=>clean(it.s)); out.v[k+'_sum']=c[0]; out.v[k+'_idx']=c[1]; out.v[k+'_pct']=c[2]; out.v[k+'_ci']=c[4].replace(/\s/g,''); });
+      // 하위검사 표: 숫자 11칸 두 줄(원점수, 환산점수)
+      const subRows=rows.filter(r=>r.items.length===11&&r.items.every(it=>/^\d+$/.test(clean(it.s))));
+      if(subRows.length>=2){ subRows[0].items.forEach((it,i)=>out.v['r'+(i+1)]=clean(it.s)); subRows[1].items.forEach((it,i)=>out.v['s'+(i+1)]=clean(it.s)); }
+      // 표지: 생년월일·검사일·성별
+      if(p===1){ const all=clean(items.map(i=>i.s).join(' '));
+        const b=all.match(/\((\d{4})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})\)/); if(b) out.info.bdate=`${b[1]}-${b[2].padStart(2,'0')}-${b[3].padStart(2,'0')}`;
+        const t=all.match(/(\d{4})\/(\d{2})\/(\d{2})(?!\))/); if(t) out.info.tdate=`${t[1]}-${t[2]}-${t[3]}`;
+        const sx=items.find(i=>i.s==='남'||i.s==='여'); if(sx) out.info.sex=sx.s; }
+    }
+    return out;
+  }
  }
 };
+const LSSC_SUB=['상위개념 이해','상위어 표현','반의어 표현','동의어 표현','구문 이해','비유문장 이해','문법오류 판단','문법오류 수정','복문 산출','단락 듣기 이해','문장 따라 말하기 (보조)'];
+const LSSC_IDX=[{k:'tot',nm:'전체언어',of:[1,2,3,4,5,6,7,8,9,10]},{k:'rec',nm:'수용언어',of:[1,5,6,7,10]},{k:'exp',nm:'표현언어',of:[2,3,4,8,9]},
+  {k:'sem',nm:'의미',of:[1,2,3,4,6]},{k:'gram',nm:'문법',of:[5,7,8,9]},{k:'prag',nm:'화용/담화',of:[10]},{k:'mem',nm:'청각기억(보조)',of:[11]}];
+// 인싸이트 결과지 '언어지수에 따른 해석 분류'
+function lsscLevel(i){ if(i<=69) return {t:'지체',c:'bad'}; if(i<=84) return {t:'약간 지체',c:'mid'}; if(i<=94) return {t:'평균 하',c:'ok'}; if(i<=104) return {t:'평균',c:'ok'}; if(i<=114) return {t:'평균 상',c:'ok'}; if(i<=129) return {t:'우수',c:'ok'}; return {t:'매우 우수',c:'ok'}; }
+function loadPdfJs(){
+  if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  return new Promise((ok,no)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload=()=>{ window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; ok(window.pdfjsLib); }; s.onerror=no; document.head.appendChild(s); });
+}
 
 /* ================= 상태 ================= */
 let tests=[]; // [{uid, id, v:{}, text, textEdited}]
@@ -326,6 +409,23 @@ $('tests').addEventListener('click',e=>{
   if(e.target.dataset.regen){ const t=tests.find(x=>x.uid==e.target.dataset.regen); t.textEdited=false; computeOne(t); }
 });
 // select 변경 대비
+$('tests').addEventListener('change',async e=>{
+  if(e.target.dataset.pdf===undefined) return;
+  const card=e.target.closest('.test'), t=tests.find(x=>x.uid==card.dataset.uid), f=e.target.files[0], msg=card.querySelector('[data-pdfmsg]'); if(!f) return;
+  msg.textContent='PDF를 읽는 중…'; msg.style.color='';
+  try{
+    const r=await TESTS[t.id].importPdf(f), n=Object.keys(r.v).length;
+    if(!n){ msg.textContent='이 PDF에서 점수를 찾지 못했어요. 인싸이트 LSSC 결과지인지 확인하거나 직접 입력해 주세요.'; msg.style.color='var(--coral-deep)'; return; }
+    Object.assign(t.v,r.v); t.textEdited=false;
+    const filled=[]; for(const [k,id] of [['bdate','bdate'],['sex','sex']]) if(r.info[k]&&!$(id).value.trim()){ $(id).value=r.info[k]; filled.push(k); }
+    if(r.info.tdate&&!$('tdate').dataset.touched){ $('tdate').value=r.info.tdate; filled.push('tdate'); } else if(r.info.tdate&&$('tdate').value!==r.info.tdate) filled.push('tdate-diff');
+    renderTests(); updateCA();
+    const m=$('tests').querySelector(`[data-uid="${t.uid}"] [data-pdfmsg]`);
+    m.textContent=`불러왔어요: 점수 ${n}칸${filled.includes('bdate')?' · 생년월일':''}${filled.includes('sex')?' · 성별':''}${filled.includes('tdate')?' · 검사일':''}. 숫자가 결과지와 같은지 한 번 확인해 주세요.`+(filled.includes('tdate-diff')?` (결과지 검사일 ${r.info.tdate.replace(/-/g,'.')} — 평가일과 달라요)`:'');
+    m.style.color='var(--mint-deep)';
+  }catch(err){ msg.textContent='PDF를 읽지 못했어요. 인터넷 연결을 확인하거나 직접 입력해 주세요.'; msg.style.color='var(--coral-deep)'; }
+  e.target.value='';
+});
 $('tests').addEventListener('change',e=>{ if(e.target.dataset.k){ const card=e.target.closest('.test'); const t=tests.find(x=>x.uid==card.dataset.uid); t.v[e.target.dataset.k]=e.target.value; computeOne(t); refreshSummary(); } });
 
 function autoSummary(){
@@ -343,6 +443,7 @@ function updateCA(){
   tests.forEach(computeOne); refreshSummary();
 }
 ['bdate','tdate'].forEach(id=>$(id).addEventListener('input',updateCA));
+$('tdate').addEventListener('input',()=>{ $('tdate').dataset.touched='1'; });
 $('name').addEventListener('input',refreshSummary);
 $('tdate').value=(d=>new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10))(new Date());
 
