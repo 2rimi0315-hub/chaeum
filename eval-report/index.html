@@ -53,6 +53,20 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--sun-deep
 .res.in input{padding:5px 4px;text-align:center;min-width:44px;border-radius:7px;background:#fff}
 .res.in th{font-size:12.5px;line-height:1.3}
 .res tr>th:first-child{white-space:nowrap}
+.items{margin:8px 0 10px;border:1px dashed #E5CF7E;border-radius:12px;background:#fff;padding:0 12px}
+.items summary{cursor:pointer;padding:10px 0;font-weight:700}
+.items-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.itrow{display:grid;grid-template-columns:170px 1fr;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.itname b{display:block;font-size:13.5px}.itname span{font-size:13px;color:var(--mint-deep);font-weight:700}.itname small{display:block;font-size:11.5px;color:var(--muted);line-height:1.35}
+.its{display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start}
+.it{min-width:34px;height:30px;padding:0 4px;border:1px solid var(--line);border-radius:8px;background:#fff;font:inherit;font-size:12.5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:2px;color:var(--ink)}
+.it.err{background:var(--coral);border-color:#F0B5AE;color:var(--coral-deep);font-weight:700;text-decoration:line-through}
+.it.cred{background:var(--sun-soft);border-color:#EED98D}
+.it.part{background:#FFEFD6;border-color:#EEC98D;color:var(--amber);font-weight:700}
+.it i{font-style:normal;font-size:11px;opacity:.8}.it.ok i{opacity:.45}
+.it.stop{background:#F1EEE6;color:#B8B09C;cursor:default;border-style:dotted}
+.it.na{background:repeating-linear-gradient(45deg,#fff,#fff 3px,#F4F0E4 3px,#F4F0E4 6px);color:#B8B09C;cursor:default}
+@media (max-width:640px){.itrow{grid-template-columns:1fr}}
 .pdf-in{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
 .tag{display:inline-block;padding:1px 9px;border-radius:99px;font-size:13px;font-weight:700}
 .tag.ok{background:var(--mint);color:var(--mint-deep)} .tag.mid{background:#FFEFD6;color:var(--amber)} .tag.bad{background:var(--coral);color:var(--coral-deep)} .tag.na{background:#eee;color:#777}
@@ -293,6 +307,10 @@ const TESTS={
   short:'LSSC', name:'학령기 아동 언어 검사', ref:'이윤경 외(2014)',
   inputHTML:()=>`<div class="pdf-in"><label class="chip" style="display:inline-block">📎 인싸이트 결과지 PDF 불러오기<input type="file" accept="application/pdf" data-pdf hidden></label>
       <span class="hint" data-pdfmsg>인싸이트에서 받은 LSSC 결과 PDF를 올리면 아래 칸이 자동으로 채워져요. 직접 입력해도 돼요.</span></div>
+    <details class="items" data-items><summary>✏️ 오반응 문항으로 원점수 계산하기</summary>
+      <div class="items-top"><label class="f" style="margin:0">학년</label><select data-k="grade" style="width:auto"><option value="">선택</option>${[1,2,3,4,5,6].map(g=>`<option value="${g}">${g}학년</option>`).join('')}</select>
+      <span class="hint" style="margin:0">틀린 문항 번호를 누르면 빨갛게 표시돼요(다시 누르면 취소). 중단 규칙과 시작점은 자동으로 적용돼요. 문장 따라 말하기는 누를 때마다 3→2→1→0점으로 바뀌어요.</span></div>
+      <div data-itemsbox></div></details>
     <div style="overflow-x:auto"><table class="res in"><tr><th>하위검사</th>${LSSC_SUB.map((s,i)=>`<th title="${s}">${i+1}. ${s.replace(' (보조)','')}</th>`).join('')}</tr>
       <tr><th>원점수</th>${LSSC_SUB.map((s,i)=>`<td><input data-k="r${i+1}" inputmode="numeric"></td>`).join('')}</tr>
       <tr><th>환산점수</th>${LSSC_SUB.map((s,i)=>`<td><input data-k="s${i+1}" inputmode="numeric"></td>`).join('')}</tr></table></div>
@@ -303,13 +321,17 @@ const TESTS={
     const num=x=>x===''||x==null||isNaN(+x)?null:+x;
     const idx=LSSC_IDX.map(x=>({...x,sum:num(v[x.k+'_sum']),idx:num(v[x.k+'_idx']),pct:num(v[x.k+'_pct']),ci:(v[x.k+'_ci']||'').trim()}));
     const sub=LSSC_SUB.map((nm,i)=>({nm,r:num(v['r'+(i+1)]),s:num(v['s'+(i+1)])}));
-    if(!idx.some(x=>x.idx!=null)) return {ok:false};
+    const gr=+(v.grade||0), errList=gr&&v.err?LSSC_SUB.map((nm,i)=>({nm:nm.replace(' (보조)',''),e:lsscScore(i+1,gr,v.err).errs})).filter(x=>x.e.length):[];
+    if(!idx.some(x=>x.idx!=null)&&!errList.length&&!sub.some(x=>x.r!=null)) return {ok:false};
     // 환산점수 합 확인
     const warn=[];
+    if(gr&&v.err) sub.forEach((x,i)=>{ if(!v.err[i+1]) return; const pr=num(v['pr'+(i+1)]), ir=lsscScore(i+1,gr,v.err).raw; if(pr!=null&&pr!==ir) warn.push(`${x.nm.replace(' (보조)','')} 원점수: 문항 입력 ${ir}점 ↔ 인싸이트 ${pr}점`); });
     idx.forEach(x=>{ const ss=x.of.map(n=>sub[n-1].s); if(x.sum!=null&&ss.every(s=>s!=null)){ const t=ss.reduce((a,b)=>a+b,0); if(t!==x.sum) warn.push(`${x.nm} 환산점수 합(${x.sum})이 하위검사 합(${t})과 달라요.`); } });
     const rows=idx.filter(x=>x.idx!=null).map(x=>{ const L=lsscLevel(x.idx); return `<tr><td>${x.nm}</td><td>${x.sum??'-'}</td><td>${x.idx}</td><td>${x.pct??'-'}</td><td>${x.ci||'-'}</td><td>${tag(L.c,L.t)}</td></tr>`; }).join('');
-    const subT=sub.some(s=>s.s!=null)?`<table class="res"><tr><th>하위검사</th>${sub.map((s,i)=>`<th>${i+1}. ${s.nm.replace(' (보조)','')}</th>`).join('')}</tr>
+    const errT=errList.length?`<table class="res"><tr><th>하위검사</th><th>오반응 문항</th></tr>${errList.map(x=>`<tr><td>${x.nm}</td><td class="l">${x.e.join(', ')}</td></tr>`).join('')}</table>`:'';
+    const subT=sub.some(s=>s.s!=null||s.r!=null)?`<table class="res"><tr><th>하위검사</th>${sub.map((s,i)=>`<th>${i+1}. ${s.nm.replace(' (보조)','')}</th>`).join('')}</tr>
       <tr><th>원점수</th>${sub.map(s=>`<td>${s.r??'-'}</td>`).join('')}</tr><tr><th>환산점수</th>${sub.map(s=>`<td>${s.s??'-'}</td>`).join('')}</tr></table>`:'';
+    if(!idx.some(x=>x.idx!=null)) return {ok:true, table:subT+errT+(warn.length?`<p class="hint" style="color:var(--coral-deep)">${warn.join(' · ')}</p>`:'')+'<p class="hint">환산점수와 언어지수는 인싸이트 결과지를 불러오거나 직접 넣으면 계산돼요.</p>', text:'', sum:'LSSC 실시(언어지수 미입력)'};
     const g=k=>idx.find(x=>x.k===k), sc=x=>x&&x.idx!=null?`${x.idx}점${x.pct!=null?`(백분위 ${x.pct})`:''}`:null;
     const T=g('tot'),R=g('rec'),E=g('exp');
     const lines=[];
@@ -325,7 +347,7 @@ const TESTS={
     if(weak.length) lines.push(`하위검사 중 ${weak.map(s=>`${s.nm.replace(' (보조)','')}(${s.s})`).join(', ')}에서 환산점수가 7 이하로 평균보다 1표준편차 이상 낮게 나타남.`);
     if(strong.length) lines.push(`${strong.map(s=>`${s.nm.replace(' (보조)','')}(${s.s})`).join(', ')}은(는) 평균보다 높게 나타남.`);
     return {ok:true,
-      table:`<table class="res"><tr><th>언어지수</th><th>환산점수 합</th><th>지수</th><th>백분위</th><th>95% 신뢰구간</th><th>수준</th></tr>${rows}</table>${subT}${warn.length?`<p class="hint" style="color:var(--coral-deep)">${warn.join(' ')}</p>`:''}`,
+      table:`<table class="res"><tr><th>언어지수</th><th>환산점수 합</th><th>지수</th><th>백분위</th><th>95% 신뢰구간</th><th>수준</th></tr>${rows}</table>${subT}${errT}${warn.length?`<p class="hint" style="color:var(--coral-deep)">${warn.join(' · ')}</p>`:''}`,
       text:lines.join('\n'),
       sum:`LSSC 결과 ${T&&T.idx!=null?`전체언어 지수 ${T.idx}점으로 ${lsscLevel(T.idx).t}`:'언어지수 산출'}${R&&R.idx!=null&&E&&E.idx!=null?`(수용 ${R.idx}점, 표현 ${E.idx}점)`:''}`};
   },
@@ -347,7 +369,7 @@ const TESTS={
       if(idxRows.length===7) idxRows.forEach((r,i)=>{ const k=LSSC_IDX[i].k, c=r.items.map(it=>clean(it.s)); out.v[k+'_sum']=c[0]; out.v[k+'_idx']=c[1]; out.v[k+'_pct']=c[2]; out.v[k+'_ci']=c[4].replace(/\s/g,''); });
       // 하위검사 표: 숫자 11칸 두 줄(원점수, 환산점수)
       const subRows=rows.filter(r=>r.items.length===11&&r.items.every(it=>/^\d+$/.test(clean(it.s))));
-      if(subRows.length>=2){ subRows[0].items.forEach((it,i)=>out.v['r'+(i+1)]=clean(it.s)); subRows[1].items.forEach((it,i)=>out.v['s'+(i+1)]=clean(it.s)); }
+      if(subRows.length>=2){ subRows[0].items.forEach((it,i)=>{ out.v['r'+(i+1)]=clean(it.s); out.v['pr'+(i+1)]=clean(it.s); }); subRows[1].items.forEach((it,i)=>out.v['s'+(i+1)]=clean(it.s)); }
       // 표지: 생년월일·검사일·성별
       if(p===1){ const all=clean(items.map(i=>i.s).join(' '));
         const b=all.match(/\((\d{4})\s*\/\s*(\d{1,2})\s*\/\s*(\d{1,2})\)/); if(b) out.info.bdate=`${b[1]}-${b[2].padStart(2,'0')}-${b[3].padStart(2,'0')}`;
@@ -363,6 +385,64 @@ const LSSC_IDX=[{k:'tot',nm:'전체언어',of:[1,2,3,4,5,6,7,8,9,10]},{k:'rec',n
   {k:'sem',nm:'의미',of:[1,2,3,4,6]},{k:'gram',nm:'문법',of:[5,7,8,9]},{k:'prag',nm:'화용/담화',of:[10]},{k:'mem',nm:'청각기억(보조)',of:[11]}];
 // 인싸이트 결과지 '언어지수에 따른 해석 분류'
 function lsscLevel(i){ if(i<=69) return {t:'지체',c:'bad'}; if(i<=84) return {t:'약간 지체',c:'mid'}; if(i<=94) return {t:'평균 하',c:'ok'}; if(i<=104) return {t:'평균',c:'ok'}; if(i<=114) return {t:'평균 상',c:'ok'}; if(i<=129) return {t:'우수',c:'ok'}; return {t:'매우 우수',c:'ok'}; }
+/* ---- LSSC 오반응 문항 입력 (기록지 기준: 문항 수·시작점·중단 규칙) ----
+   문항 내용은 넣지 않고 번호만 사용합니다. */
+const LSSC_OK8=[3,7,9,15,16,21,26,30,32]; // 문법오류 판단·수정: 바른 문장(수정 채점 없음, 중단 계산에서 제외)
+const LSSC_SPEC={
+  1:{n:24,stop:6}, 2:{n:24,follow:1},
+  3:{n:22,stop:8}, 4:{n:22,stop:8},
+  5:{n:35,start:g=>g>=3?9:1},
+  6:{n:23},
+  7:{n:35,stop:6,skip:LSSC_OK8}, 8:{n:35,follow:7,na:LSSC_OK8},
+  9:{n:30,start:g=>g>=4?8:1,stop:6},
+  10:{passages:[5,5,5,5,5,5,5,6,5], range:g=>g>=4?[4,9]:[1,6]},
+  11:{n:24,max:3}
+};
+const LSSC_RULE={1:'연속 6문항 오반응 시 중단(상위어 표현도 함께 중단)',3:'연속 8문항 오반응 시 중단',4:'연속 8문항 오반응 시 중단',
+  5:'1~2학년 1번, 3학년 이상 9번부터(앞 문항은 정반응으로 인정)',6:'모든 문항 실시',7:'바른 문장을 빼고 연속 6문항 오반응 시 중단(수정도 함께 중단)',
+  9:'1~3학년 1번, 4학년 이상 8번부터 · 연속 6문항 오반응 시 중단',10:'1~3학년 단락 1~6, 4~6학년 단락 4~9',11:'문항별 0~3점'};
+// 하위검사별 문항 상태 계산 → {cells:[{id,label,state}], raw, errs:[label]}
+function lsscScore(sub,grade,err){
+  const sp=LSSC_SPEC[sub], E=new Set(sub===11?[]:((err&&err[sub])||[]));
+  if(sub===10){
+    const [a,b]=sp.range(grade), cells=[]; let raw=0; const errs=[];
+    sp.passages.forEach((q,pi)=>{ const p=pi+1; if(p<a||p>b) return; for(let i=1;i<=q;i++){ const id=`${p}-${i}`, bad=E.has(id); cells.push({id,label:id,state:bad?'err':'ok'}); if(bad) errs.push(id); else raw++; } });
+    return {cells,raw,errs};
+  }
+  if(sub===11){
+    const sc=(err&&err[11])||{}, cells=[]; let raw=0; const errs=[];
+    for(let i=1;i<=sp.n;i++){ const v=sc[i]!=null?+sc[i]:3; raw+=v; cells.push({id:String(i),label:`${i}`,state:v===3?'ok':'part',val:v}); if(v<3) errs.push(`${i}(${v}점)`); }
+    return {cells,raw,errs};
+  }
+  const start=sp.start?sp.start(grade):1;
+  let stopAt=Infinity;
+  if(sp.follow){ stopAt=lsscScore(sp.follow,grade,err).stopAt; }
+  else if(sp.stop){ let run=0; for(let i=start;i<=sp.n;i++){ if(sp.skip&&sp.skip.includes(i)) continue; if(E.has(String(i))){ run++; if(run>=sp.stop){ stopAt=i; break; } } else run=0; } }
+  const cells=[]; let raw=0; const errs=[];
+  for(let i=1;i<=sp.n;i++){
+    const id=String(i);
+    if(sp.na&&sp.na.includes(i)){ cells.push({id,label:id,state:'na'}); continue; }
+    if(i>stopAt){ cells.push({id,label:id,state:'stop'}); continue; }
+    const bad=E.has(id);
+    cells.push({id,label:id,state:bad?'err':(i<start?'cred':'ok')});
+    if(bad) errs.push(id); else raw++;
+  }
+  return {cells,raw,errs,stopAt};
+}
+function lsscItemsHTML(t){
+  const g=+(t.v.grade||0);
+  if(!g) return '<p class="hint">학년을 고르면 하위검사별 문항 칸이 나와요.</p>';
+  return LSSC_SUB.map((nm,si)=>{ const s=si+1, r=lsscScore(s,g,t.v.err);
+    const btns=r.cells.map(c=>c.state==='na'?`<span class="it na" title="바른 문장 — 수정 채점 없음">${c.label}</span>`
+      :c.state==='stop'?`<span class="it stop" title="중단 이후 문항">${c.label}</span>`
+      :`<button type="button" class="it ${c.state}" data-it="${s}|${c.id}" title="${c.state==='cred'?'시작점 이전 — 정반응으로 인정':s===11?'눌러서 점수 바꾸기':'눌러서 오반응 표시'}">${c.label}${s===11?`<i>${c.val}</i>`:''}</button>`).join('');
+    return `<div class="itrow"><div class="itname"><b>${s}. ${nm.replace(' (보조)','')}</b>${t.v.err&&t.v.err[s]?`<span>원점수 ${r.raw}</span>`:'<span style="color:var(--muted);font-weight:400">아직 입력 안 함</span>'}${LSSC_RULE[s]?`<small>${LSSC_RULE[s]}</small>`:''}</div><div class="its">${btns}</div></div>`; }).join('');
+}
+function lsscApplyItems(t){
+  const g=+(t.v.grade||0); if(!g) return;
+  // 문항을 한 번이라도 누른 하위검사만 원점수를 바꿈(인싸이트에서 불러온 값 보존)
+  for(let s=1;s<=11;s++) if(t.v.err&&t.v.err[s]) t.v['r'+s]=String(lsscScore(s,g,t.v.err).raw);
+}
 function loadPdfJs(){
   if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
   return new Promise((ok,no)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
@@ -388,6 +468,7 @@ function renderTests(){
     <textarea data-text="${t.uid}" placeholder="점수를 넣으면 보고서 문장이 채워져요."></textarea></div>`; }).join('');
   tests.forEach(t=>{ const el=box.querySelector(`[data-uid="${t.uid}"]`);
     el.querySelectorAll('[data-k]').forEach(i=>{ if(t.v[i.dataset.k]!=null) i.value=t.v[i.dataset.k]; });
+    const ib=el.querySelector('[data-itemsbox]'); if(ib){ ib.innerHTML=lsscItemsHTML(t); if(t.v.grade) el.querySelector('[data-items]').open=true; }
     el.querySelector('[data-text]').value=t.text; computeOne(t); });
   refreshSummary();
 }
@@ -401,22 +482,34 @@ function computeOne(t){
 }
 $('tests').addEventListener('input',e=>{
   const card=e.target.closest('.test'); if(!card) return; const t=tests.find(x=>x.uid==card.dataset.uid);
+  if(e.target.dataset.k==='grade'){ t.v.grade=e.target.value; if(t.v.err) lsscApplyItems(t); refreshItems(t,card); return; }
   if(e.target.dataset.k){ t.v[e.target.dataset.k]=e.target.value; computeOne(t); refreshSummary(); }
   if(e.target.dataset.text){ t.text=e.target.value; t.textEdited=true; }
 });
 $('tests').addEventListener('click',e=>{
   if(e.target.dataset.del){ tests=tests.filter(x=>x.uid!=e.target.dataset.del); renderTests(); }
   if(e.target.dataset.regen){ const t=tests.find(x=>x.uid==e.target.dataset.regen); t.textEdited=false; computeOne(t); }
+  const it=e.target.closest('[data-it]');
+  if(it){ const card=it.closest('.test'), t=tests.find(x=>x.uid==card.dataset.uid), [s,id]=it.dataset.it.split('|');
+    t.v.err=t.v.err||{};
+    if(s==='11'){ const m=t.v.err[11]=t.v.err[11]||{}; m[id]=((m[id]!=null?+m[id]:3)+3)%4; }
+    else { const a=t.v.err[s]=t.v.err[s]||[]; const k=a.indexOf(id); k>=0?a.splice(k,1):a.push(id); }
+    lsscApplyItems(t); t.textEdited=false; refreshItems(t,card); }
 });
+function refreshItems(t,card){
+  card.querySelector('[data-itemsbox]').innerHTML=lsscItemsHTML(t);
+  for(let s=1;s<=11;s++){ const i=card.querySelector(`[data-k="r${s}"]`); if(i&&t.v['r'+s]!=null) i.value=t.v['r'+s]; }
+  computeOne(t); refreshSummary();
+}
 // select 변경 대비
 $('tests').addEventListener('change',async e=>{
   if(e.target.dataset.pdf===undefined) return;
   const card=e.target.closest('.test'), t=tests.find(x=>x.uid==card.dataset.uid), f=e.target.files[0], msg=card.querySelector('[data-pdfmsg]'); if(!f) return;
   msg.textContent='PDF를 읽는 중…'; msg.style.color='';
   try{
-    const r=await TESTS[t.id].importPdf(f), n=Object.keys(r.v).length;
+    const r=await TESTS[t.id].importPdf(f), n=Object.keys(r.v).filter(k=>!k.startsWith('pr')).length;
     if(!n){ msg.textContent='이 PDF에서 점수를 찾지 못했어요. 인싸이트 LSSC 결과지인지 확인하거나 직접 입력해 주세요.'; msg.style.color='var(--coral-deep)'; return; }
-    Object.assign(t.v,r.v); t.textEdited=false;
+    Object.assign(t.v,r.v); lsscApplyItems&&t.id==='lssc'&&lsscApplyItems(t); t.textEdited=false;
     const filled=[]; for(const [k,id] of [['bdate','bdate'],['sex','sex']]) if(r.info[k]&&!$(id).value.trim()){ $(id).value=r.info[k]; filled.push(k); }
     if(r.info.tdate&&!$('tdate').dataset.touched){ $('tdate').value=r.info.tdate; filled.push('tdate'); } else if(r.info.tdate&&$('tdate').value!==r.info.tdate) filled.push('tdate-diff');
     renderTests(); updateCA();
@@ -426,7 +519,7 @@ $('tests').addEventListener('change',async e=>{
   }catch(err){ msg.textContent='PDF를 읽지 못했어요. 인터넷 연결을 확인하거나 직접 입력해 주세요.'; msg.style.color='var(--coral-deep)'; }
   e.target.value='';
 });
-$('tests').addEventListener('change',e=>{ if(e.target.dataset.k){ const card=e.target.closest('.test'); const t=tests.find(x=>x.uid==card.dataset.uid); t.v[e.target.dataset.k]=e.target.value; computeOne(t); refreshSummary(); } });
+$('tests').addEventListener('change',e=>{ if(e.target.dataset.k&&e.target.dataset.k!=='grade'){ const card=e.target.closest('.test'); const t=tests.find(x=>x.uid==card.dataset.uid); t.v[e.target.dataset.k]=e.target.value; computeOne(t); refreshSummary(); } });
 
 function autoSummary(){
   const done=tests.filter(t=>t.res); if(!done.length) return '';
