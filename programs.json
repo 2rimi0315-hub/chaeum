@@ -249,5 +249,30 @@
       "읽기·작문 활동지 메이커",
       "채움 활동지 만들기"
     ]
+  },
+  {
+    "id": "eval-report",
+    "name": "평가 보고서 쓰기",
+    "english": "Evaluation Report",
+    "group": "평가",
+    "icon": "pencil",
+    "color": "lavender",
+    "description": "검사 도구를 고르고 원점수를 넣으면 등가연령·백분위·진단과 결과 기술 문장이 채워지는 언어평가 보고서 작성 도구",
+    "features": [
+      "REVT · PRES 자동 채점",
+      "LSSC 오반응 입력 · 인싸이트 PDF 불러오기",
+      "보고서체 결과 기술 · A4 인쇄"
+    ],
+    "mode": "direct-link",
+    "url": "https://stellar-sunburst-e87ec6.netlify.app/eval-report/",
+    "subtitle": "검사 결과를 보고서로",
+    "aliases": [
+      "언어평가 보고서",
+      "평가 보고서",
+      "REVT",
+      "PRES",
+      "LSSC",
+      "결과보고서"
+    ]
   }
 ]
