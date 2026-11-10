@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#FFD95C">
+<meta name="description" content="채움 평가 보고서 — 검사 도구를 고르고 원점수를 넣으면 등가연령·백분위·결과 기술이 채워지는 언어평가 보고서 작성 도구">
+<title>채움 평가 보고서</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* 구조: 왼쪽(입력) — 아동 정보 → 검사 추가(검사별 카드) → 행동관찰·소견 / 미리보기 버튼 → 보고서 오버레이(A4 인쇄) */
+:root{
+  --bg:#FFF7DC;--paper:#FFFFFF;--paper-2:#FFFBEE;--ink:#3E372A;--muted:#8C8270;--line:#EFE3B8;
+  --sun:#FFD95C;--sun-deep:#E8B400;--sun-soft:#FFF0B8;
+  --mint:#DDF3E8;--mint-deep:#3E9A73;--coral:#FFE1DE;--coral-deep:#C9564F;--sky:#E3EFFA;--sky-deep:#4A7FB5;--amber:#C9822E;
+  --font-display:"Jua","Gowun Dodum",sans-serif;
+  --font-body:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.6}
+.wrap{max-width:880px;margin:0 auto;padding:22px 16px 80px}
+.hero{background:var(--sun-soft);border:1px solid #F1DE97;border-radius:20px;padding:24px 26px;margin-bottom:16px;position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;right:-40px;top:-50px;width:180px;height:180px;border-radius:50%;background:#FFE58A;opacity:.6}
+.hero>*{position:relative}
+.hero h1{font-family:var(--font-display);font-weight:400;font-size:28px;margin:0 0 4px}
+.hero p{margin:0;color:var(--muted)}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:14px}
+.card h2{font-family:var(--font-display);font-weight:400;font-size:20px;margin:0 0 14px;display:flex;align-items:center;gap:8px}
+.num{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--sun);font-size:15px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px 14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 14px}
+label.f{display:block;font-size:13.5px;font-weight:700;margin-bottom:5px}
+input,select,textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:11px;font:inherit;background:var(--paper-2);color:var(--ink)}
+textarea{min-height:84px;resize:vertical;line-height:1.6}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--sun-deep);box-shadow:0 0 0 3px var(--sun-soft);background:#fff}
+.ca{margin-top:12px;padding:10px 14px;border-radius:12px;background:var(--paper-2);border:1px dashed #E9D58C;font-size:14px}
+.ca b{font-size:17px}
+.add{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid #EBD483;background:var(--paper-2);border-radius:99px;padding:8px 14px;font:inherit;cursor:pointer}
+.chip:hover{background:var(--sun-soft)}
+.chip b{font-family:var(--font-display);font-weight:400}
+.test{border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:14px;background:var(--paper-2)}
+.test-h{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.test-h h3{margin:0;font-family:var(--font-display);font-weight:400;font-size:18px}
+.test-h .full{color:var(--muted);font-size:13px}
+.x{margin-left:auto;border:0;background:#F6E9E6;color:var(--coral-deep);border-radius:9px;padding:5px 10px;font:inherit;font-size:13px;cursor:pointer}
+.res{margin-top:12px;border-collapse:collapse;width:100%;font-size:14px;background:#fff;border-radius:10px;overflow:hidden}
+.res th,.res td{border:1px solid var(--line);padding:7px 8px;text-align:center}
+.res th{background:#FFF4CC;font-weight:700}
+.res td.l{text-align:left}
+.tag{display:inline-block;padding:1px 9px;border-radius:99px;font-size:13px;font-weight:700}
+.tag.ok{background:var(--mint);color:var(--mint-deep)} .tag.mid{background:#FFEFD6;color:var(--amber)} .tag.bad{background:var(--coral);color:var(--coral-deep)} .tag.na{background:#eee;color:#777}
+.desc-h{display:flex;align-items:center;gap:8px;margin:12px 0 5px;font-size:13.5px;font-weight:700}
+.desc-h button{margin-left:auto;border:1px solid var(--line);background:#fff;border-radius:8px;padding:3px 9px;font:inherit;font-size:12.5px;cursor:pointer}
+.hint{font-size:12.5px;color:var(--muted);margin:6px 0 0}
+.empty-tests{color:var(--muted);text-align:center;padding:16px 0 4px}
+.bar{position:sticky;bottom:12px;display:flex;gap:10px;justify-content:center;margin-top:18px}
+.btn{border:0;border-radius:14px;padding:13px 22px;font-family:var(--font-display);font-size:17px;cursor:pointer;box-shadow:0 6px 16px rgba(120,90,0,.14)}
+.btn.main{background:var(--sun);color:var(--ink)} .btn.main:hover{background:#FFCF33}
+.btn.sub{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.msg{text-align:center;color:var(--coral-deep);min-height:20px;font-size:14px}
+.hist{width:100%;border-collapse:collapse;font-size:13.5px}
+.hist td,.hist th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:center}
+.hist th{background:#FFF4CC}
+.sm{border:0;border-radius:8px;padding:4px 9px;font:inherit;font-size:12.5px;cursor:pointer;background:#F4ECD3}
+.sm.del{background:#F8E3DF;color:#9a4a40}
+
+/* ---------- 보고서 ---------- */
+#overlay{display:none;position:fixed;inset:0;background:rgba(62,55,42,.5);z-index:50;overflow:auto;padding:20px 10px}
+#overlay.show{display:block}
+.rep-bar{max-width:794px;margin:0 auto 10px;display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap}
+.rep-bar span{color:#fff;font-size:13px;margin-right:auto}
+.rep-bar .btn{font-size:15px;padding:9px 16px}
+.sheet{max-width:794px;margin:0 auto;background:#fff;color:#222;padding:46px 52px;font-family:"Noto Sans KR",sans-serif;font-size:13px;line-height:1.65}
+.sheet h1{text-align:center;font-size:21px;margin:0 0 22px;letter-spacing:2px}
+.sheet h2{font-size:14.5px;margin:20px 0 7px;padding-bottom:4px;border-bottom:1.5px solid #333}
+.sheet h4{font-size:13.5px;margin:12px 0 5px}
+.sheet table{width:100%;border-collapse:collapse;margin:4px 0}
+.sheet th,.sheet td{border:1px solid #999;padding:5px 7px;text-align:center}
+.sheet th{background:#f3f0e6;font-weight:500}
+.sheet td.l{text-align:left}
+.sheet p{margin:4px 0}
+.sheet .txt{white-space:pre-wrap}
+.sheet ul{margin:4px 0;padding-left:18px}
+.sheet .sign{margin-top:26px;text-align:right}
+.sheet .note{font-size:11px;color:#666}
+@media (max-width:640px){.grid,.grid3{grid-template-columns:1fr}.sheet{padding:24px 16px}}
+@media print{
+  @page{size:A4;margin:14mm 13mm}
+  body{background:#fff}
+  body>*:not(#overlay){display:none!important}
+  #overlay{position:static;display:block!important;background:none;padding:0;overflow:visible}
+  .rep-bar{display:none}
+  .sheet{max-width:none;padding:0}
+  .sheet h2,.sheet h4{break-after:avoid} .sheet table{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <section class="hero">
+    <h1>채움 평가 보고서</h1>
+    <p>검사 도구를 고르고 원점수를 넣으면 등가연령·백분위·진단과 결과 기술 문장이 자동으로 채워져요.</p>
+  </section>
+
+  <section class="card">
+    <h2><span class="num">1</span>인적 사항</h2>
+    <div class="grid">
+      <div><label class="f" for="name">아동명</label><input id="name" placeholder="이름"></div>
+      <div><label class="f" for="sex">성별</label><select id="sex"><option value="">선택</option><option>남</option><option>여</option></select></div>
+      <div><label class="f" for="bdate">생년월일</label><input id="bdate" type="date"></div>
+      <div><label class="f" for="tdate">평가일</label><input id="tdate" type="date"></div>
+      <div><label class="f" for="org">소속(기관)</label><input id="org" placeholder="예: 채움언어학습연구소"></div>
+      <div><label class="f" for="examiner">평가자</label><input id="examiner" placeholder="이름 / 자격"></div>
+      <div><label class="f" for="informant">정보제공자</label><input id="informant" placeholder="예: 어머니"></div>
+      <div><label class="f" for="school">소속(어린이집·학교)</label><input id="school" placeholder="예: ○○어린이집 6세반"></div>
+    </div>
+    <div class="ca" id="ca">생년월일과 평가일을 넣으면 생활연령이 계산돼요.</div>
+    <div style="margin-top:12px"><label class="f" for="reason">의뢰 사유 및 배경 정보</label><textarea id="reason" placeholder="예: 또래에 비해 말이 늦고 문장으로 표현하는 데 어려움이 있어 어머니가 평가를 의뢰함."></textarea></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="num">2</span>실시 검사</h2>
+    <div class="add" id="addBtns"></div>
+    <p class="hint">검사를 누르면 아래에 입력 카드가 생겨요. 여러 검사를 함께 넣을 수 있어요.</p>
+    <div id="tests"><div class="empty-tests">아직 추가한 검사가 없어요.</div></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="num">3</span>행동 관찰 · 종합 소견</h2>
+    <label class="f" for="obs">행동 관찰</label>
+    <textarea id="obs" placeholder="예: 검사 내내 착석을 유지하였으며 검사자의 지시에 협조적이었음. 모르는 문항에서는 반응을 망설이는 모습을 보임."></textarea>
+    <div class="desc-h" style="margin-top:14px"><span>종합 소견</span><button type="button" id="regenSum">결과로 다시 쓰기</button></div>
+    <textarea id="summary" style="min-height:110px" placeholder="검사를 추가하면 결과를 바탕으로 초안이 채워져요."></textarea>
+    <label class="f" for="rec" style="margin-top:12px">권고 사항</label>
+    <textarea id="rec" placeholder="예: 주 2회 언어치료를 권함. 수용·표현 어휘 확장 및 문장 산출 중심의 중재가 필요함."></textarea>
+  </section>
+
+  <div class="msg" id="msg"></div>
+  <div class="bar"><button class="btn sub" id="btnSave" type="button">💾 임시 저장</button><button class="btn main" id="btnPreview" type="button">📄 보고서 보기</button></div>
+
+  <section class="card" style="margin-top:22px">
+    <h2>🕘 저장한 보고서 <span class="hint" style="margin:0 0 0 auto">최근 20개 · 이 브라우저에만 저장</span></h2>
+    <table class="hist"><thead><tr><th>아동명</th><th>평가일</th><th>생활연령</th><th>검사</th><th>저장일</th><th>관리</th></tr></thead><tbody id="hist"></tbody></table>
+  </section>
+</main>
+
+<div id="overlay">
+  <div class="rep-bar"><span>인쇄 창에서 「PDF로 저장」을 고르면 파일로 저장돼요.</span>
+    <button class="btn main" id="btnPrint" type="button">🖨 인쇄 / PDF</button><button class="btn sub" id="btnClose" type="button">닫기</button></div>
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<script>
+/* ================= 공통 ================= */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dot=d=>d?d.replace(/-/g,'.'):'';
+const ym=m=>`${Math.floor(m/12)}세 ${m%12}개월`;
+function monthsBetween(b,t){ if(!b||!t) return null; const [by,bm,bd]=b.split('-').map(Number),[ty,tm,td]=t.split('-').map(Number); let m=(ty-by)*12+(tm-bm); if(td<bd) m--; return m; }
+const tag=(c,t)=>`<span class="tag ${c}">${t}</span>`;
+
+/* ================= REVT 규준 (김영태 외, 2009) ================= */
+// [min개월,max개월,라벨, 수용[M,SD,-1SD,-2SD,백분위10~100], 표현[...]]  <표-27>·<표-29>
+const REVT_G=[
+ [30,32,"2세 6-8개월",[16.95,5.24,11.71,6.47,[10,13,14,16,17,18,19,22,24,30]],[18.14,8.37,9.76,1.39,[7,10,13,16,18,20,22,25,30,41]]],
+ [33,35,"2세 9-11개월",[19.13,6.18,12.95,6.77,[12,14,17,17,19,21,22,25,27,33]],[22.17,9.18,12.99,3.81,[9,16,19,21,22,23,25,32,34,42]]],
+ [36,41,"3세 0-5개월",[28.45,8.65,19.80,11.14,[18,22,24,27,29,30,33,36,39,56]],[33.31,10.78,22.53,11.75,[18,24,28,31,34,36,39,43,48,57]]],
+ [42,47,"3세 6-11개월",[32.25,9.72,22.54,12.82,[19,24,27,30,34,36,38,41,44,53]],[40.81,10.46,30.34,19.88,[26,33,36,39,42,45,48,51,53,59]]],
+ [48,53,"4세 0-5개월",[42.35,11.23,31.12,19.89,[29,34,38,41,44,47,49,51,55,62]],[49.36,9.54,39.81,30.27,[36,42,45,48,50,53,55,57,61,73]]],
+ [54,59,"4세 6-11개월",[46.44,11.57,34.87,23.30,[32,38,42,45,47,51,54,57,59,64]],[55.40,9.07,46.32,37.25,[43,48,52,55,57,58,61,63,66,75]]],
+ [60,65,"5세 0-5개월",[56.25,8.96,47.30,38.34,[44,49,51,54,57,59,61,63,67,74]],[62.72,8.55,54.17,45.61,[50,56,59,62,64,66,67,70,73,82]]],
+ [66,71,"5세 6-11개월",[60.11,8.43,51.68,43.25,[50,55,57,59,61,63,64,66,69,78]],[66.89,7.73,59.16,51.43,[56,62,64,66,68,69,72,74,76,84]]],
+ [72,77,"6세 0-5개월",[70.13,8.08,62.04,53.96,[60,64,66,69,70,72,74,77,79,97]],[74.18,7.19,66.99,59.81,[65,68,71,73,75,77,78,81,83,91]]],
+ [78,83,"6세 6-11개월",[71.71,8.82,62.90,54.08,[61,64,68,70,71,74,76,78,82,97]],[75.94,7.88,68.06,60.18,[64,70,73,76,78,79,81,83,86,90]]],
+ [84,89,"7세 0-5개월",[83.96,7.44,76.53,69.09,[74,77,81,83,85,87,88,90,95,100]],[85.77,8.71,77.06,68.35,[74,77,82,84,86,88,91,93,96,101]]],
+ [90,95,"7세 6-11개월",[86.47,9.14,77.33,68.19,[75,80,82,84,87,88,90,94,100,111]],[85.63,9.15,76.48,67.32,[73,76,81,83,85,88,91,93,98,105]]],
+ [96,101,"8세 0-5개월",[90.34,9.21,81.14,71.93,[79,84,86,88,91,93,95,99,104,112]],[89.27,8.20,81.07,72.86,[77,82,84,88,90,92,94,96,99,106]]],
+ [102,107,"8세 6-11개월",[91.77,9.87,81.91,72.04,[80,84,86,89,92,95,99,103,105,111]],[91.23,8.93,82.31,73.38,[78,82,87,90,93,94,97,99,101,106]]],
+ [108,113,"9세 0-5개월",[106.60,9.94,96.66,86.73,[94,98,102,104,107,110,113,117,120,126]],[105.69,9.00,96.69,87.68,[94,99,102,104,106,108,111,114,116,123]]],
+ [114,119,"9세 6-11개월",[109.34,9.12,100.22,91.11,[97,101,105,107,111,113,115,118,122,127]],[108.15,10.00,98.15,88.16,[94,99,103,106,109,111,115,116,122,127]]],
+ [120,131,"10세",[112.84,8.33,104.51,96.18,[102,105,109,112,114,116,118,120,123,129]],[111.29,8.26,103.03,94.77,[99,104,108,110,112,114,116,119,121,127]]],
+ [132,143,"11세",[129.93,8.49,121.44,112.95,[119,123,126,128,131,133,135,137,142,152]],[131.90,11.67,120.23,108.56,[116,122,126,130,133,136,137,140,145,160]]],
+ [144,155,"12세",[133.98,7.90,126.08,118.18,[123,127,129,132,135,137,139,141,145,150]],[137.49,10.98,126.51,115.53,[121,127,132,135,138,141,144,147,151,161]]],
+ [156,167,"13세",[148.38,10.19,138.19,128.01,[136,140,143,146,149,152,154,157,161,173]],[149.70,12.86,136.85,123.99,[133,139,143,147,151,154,158,162,166,177]]],
+ [168,179,"14세",[150.96,10.28,140.68,130.39,[137,142,146,149,151,154,156,159,165,171]],[152.61,13.88,138.73,124.85,[133,141,145,151,153,158,160,165,171,181]]],
+ [180,191,"15세",[154.24,9.92,144.31,134.39,[142,147,149,152,154,158,160,163,166,172]],[156.96,11.42,145.54,134.12,[142,149,153,156,158,160,162,166,171,181]]],
+ [192,9999,"16세 이상",[162.09,7.74,154.36,146.62,[151,155,159,161,163,165,167,169,171,175]],[161.28,9.08,152.20,143.12,[150,154,157,160,162,164,167,170,174,176]]]
+];
+// <표-28> 등가월령
+const REVT_EQ={
+ rec:{start:29,max:193,list:[30,31,32,34,35,36,38,39,40,42,43,44,46,47,48,50,51,52,54,55,56,58,59,60,62,63,64,66,67,68,70,71,72,74,75,76,77,79,80,81,83,84,85,87,88,89,91,92,93,95,96,97,99,100,101,103,104,105,107,108,109,111,112,113,115,116,117,118,120,121,122,124,125,126,128,129,130,132,133,134,136,137,138,140,141,142,144,145,146,148,149,150,152,153,154,156,157,158,160,161,162,163,165,166,167,169,170,171,173,174,175,177,178,179,181,182,183,185,186,187,189,190,191,193]},
+ exp:{start:34,max:192,list:[30,31,33,34,35,37,38,39,41,42,43,45,46,48,49,50,52,53,54,56,57,58,60,61,63,64,65,67,68,69,71,72,74,75,76,78,79,80,82,83,84,86,87,89,90,91,93,94,95,97,98,99,101,102,104,105,106,108,109,110,112,113,114,116,117,119,120,121,123,124,125,127,128,130,131,132,134,135,136,138,139,140,142,143,145,146,147,149,150,151,153,154,155,157,158,160,161,162,164,165,166,168,169,171,172,173,175,176,177,179,180,181,183,184,186,187,188,190,191,192]}
+};
+function revtBand(m){ if(m<30) return "2세 6개월 미만"; if(m<33) return "2세 6-8개월"; if(m<36) return "2세 9-11개월"; if(m<120) return `${Math.floor(m/12)}세 ${m%12<6?'0-5':'6-11'}개월`; if(m<192) return `${Math.floor(m/12)}세`; return "16세 이상"; }
+function revtEq(kind,s){ const e=REVT_EQ[kind]; if(s<e.start) return {m:null,mt:"30개월 미만",age:"2세 6개월 미만"}; const i=s-e.start; if(i>=e.list.length) return {m:e.max,mt:`${e.max}개월 이상`,age:"16세 이상"}; const m=e.list[i]; return {m,mt:`${m}개월`,age:revtBand(m)}; }
+function revtPct(P,s){ const L=[10,20,30,40,50,60,70,80,90,100]; const eq=L.filter((p,i)=>P[i]===s); if(eq.length) return eq.length>1?`${eq[0]}~${eq[eq.length-1]}%ile`:`${eq[0]}%ile`; if(s<P[0]) return "10%ile 미만"; if(s>P[9]) return "100%ile"; for(let i=0;i<9;i++) if(s>P[i]&&s<P[i+1]) return `${L[i]}~${L[i+1]}%ile`; return "-"; }
+function revtDx(n,s){ if(s>=n[2]) return {t:"정상 발달",c:"ok"}; if(s>=n[3]) return {t:"약간 지체",c:"mid"}; return {t:"어휘력 발달 지체",c:"bad"}; }
+
+/* ================= PRES 규준 (김영태 외, 2003) ================= */
+const PRES_ST=[[1,19,21],[2,22,24],[3,25,27],[4,28,30],[5,31,33],[6,34,36],[7,37,39],[8,40,42],[9,43,45],[10,46,48],[11,49,54],[12,55,60],[13,61,66],[14,67,72],[15,73,78]].map(([n,a,b])=>[n,a,b,Math.round((a+b)/2)]);
+const _=null;
+// <부록 B> [min,max,라벨,[[획득점수,수용,표현],...]]
+const PRES_P=[
+ [24,29,"2;0-2;5세",[[1,10,4],[2,14,8],[3,19,11],[4,23,16],[5,28,23],[6,34,30],[7,42,35],[8,52,40],[9,58,48],[10,65,56],[11,69,64],[12,72,69],[13,76,74],[14,81,81],[15,86,85],[16,92,90],[17,92,95],[18,94,96],[19,95,96],[20,96,98],[21,96,_],[22,97,_],[23,98,_]]],
+ [30,35,"2;6-2;11세",[[1,5,_],[2,6,_],[3,7,_],[4,8,_],[5,10,_],[6,13,_],[7,16,_],[8,17,_],[9,18,2],[10,20,6],[11,26,8],[12,30,14],[13,30,22],[14,32,28],[15,38,32],[16,42,40],[17,48,50],[18,58,60],[19,68,68],[20,74,74],[21,76,80],[22,78,84],[23,82,85],[24,84,88],[25,86,91],[26,88,91],[27,89,91],[28,91,93],[29,93,93],[30,93,93],[31,94,94],[32,96,94],[34,_,95],[38,_,96],[43,_,97],[48,_,98]]],
+ [36,41,"3;0-3;5세",[[13,2,_],[14,2,2],[15,3,3],[16,4,5],[17,6,13],[18,8,20],[19,12,25],[20,16,30],[21,22,33],[22,26,37],[23,32,42],[24,39,47],[25,49,51],[26,56,54],[27,61,58],[28,65,65],[29,70,71],[30,74,75],[31,80,78],[32,86,81],[33,88,86],[34,91,88],[35,91,89],[36,93,91],[37,94,93],[38,94,94],[39,95,96],[40,96,96],[41,96,97],[42,97,97],[44,98,98],[45,99,99]]],
+ [42,47,"3;6-3;11세",[[10,1,2],[13,2,6],[16,3,9],[18,4,11],[19,6,12],[20,9,14],[21,11,16],[22,14,20],[23,17,24],[24,22,28],[25,28,32],[26,34,34],[27,37,39],[28,40,47],[29,44,57],[30,50,65],[31,56,71],[32,60,76],[33,67,78],[34,73,81],[35,78,84],[36,84,86],[37,86,89],[38,90,92],[39,92,94],[40,94,97],[41,95,99],[42,96,_],[43,98,_],[44,99,_]]],
+ [48,53,"4;0-4;5세",[[16,2,1],[19,4,2],[21,6,3],[22,8,4],[23,9,5],[24,11,6],[25,14,8],[26,16,10],[27,18,12],[28,22,14],[29,28,16],[30,40,18],[31,44,24],[32,44,30],[33,48,32],[34,52,35],[35,58,40],[36,63,45],[37,68,55],[38,76,62],[39,80,70],[40,84,76],[41,88,80],[42,91,85],[43,93,90],[44,96,92],[45,98,93],[46,_,95],[47,_,97],[48,_,98],[49,_,99]]],
+ [54,59,"4;6-4;11세",[[19,1,1],[21,2,2],[22,4,3],[26,6,4],[27,8,5],[28,12,6],[29,13,8],[30,14,8],[31,16,10],[32,20,11],[33,22,12],[34,24,13],[35,28,18],[36,31,24],[37,38,28],[38,47,32],[39,56,36],[40,63,40],[41,68,48],[42,72,56],[43,78,62],[44,83,71],[45,88,79],[46,94,84],[47,97,88],[48,98,92],[49,99,94],[50,_,97]]],
+ [60,65,"5;0-5;5세",[[21,1,1],[24,2,2],[27,4,3],[29,5,4],[31,5,6],[32,5,7],[33,9,10],[34,13,14],[35,16,17],[36,19,20],[37,23,24],[38,32,33],[39,40,39],[40,44,43],[42,52,52],[43,58,65],[44,63,72],[46,68,78],[47,76,86],[48,86,89],[49,92,92],[50,95,96],[52,97,98],[53,99,99]]],
+ [66,71,"5;6-5;11세",[[30,2,1],[32,3,2],[33,4,3],[34,6,4],[35,7,6],[36,8,9],[37,8,10],[38,9,12],[39,10,15],[40,15,18],[41,20,20],[42,24,26],[43,28,31],[44,32,39],[45,43,48],[46,50,54],[47,58,60],[48,64,68],[49,70,75],[50,84,84],[51,94,93],[52,97,96],[53,98,98],[54,_,99]]],
+ [72,77,"6;0-6;5세",[[42,5,2],[43,7,6],[44,8,8],[45,10,10],[46,14,12],[47,18,14],[48,20,20],[49,22,25],[50,24,32],[51,25,40],[52,36,44],[53,48,50],[54,60,60],[55,72,70],[56,81,79],[57,88,88],[58,90,94],[59,96,_],[60,98,_]]]
+];
+function presPct(ca,kind,s){
+  const g=PRES_P.find(x=>ca>=x[0]&&ca<=x[1]); if(!g) return null;
+  const c=kind==='rec'?1:2, rows=g[3].filter(r=>r[c]!==null);
+  if(s<rows[0][0]) return `${rows[0][c]} 미만`;
+  const last=rows[rows.length-1]; if(s>last[0]) return `${last[c]} 이상`;
+  let hit=rows[0]; for(const r of rows) if(r[0]<=s) hit=r; return String(hit[c]);
+}
+function presLA(score,stage){
+  if(stage==16) return {m:78,t:'78개월 이상',how:'연령단계'};
+  if(stage){ const s=PRES_ST[stage-1]; return {m:s[3],t:`${s[3]}개월`,how:'연령단계'}; }
+  if(score<=0) return {m:null,t:'19개월 미만',how:'획득점수'};
+  return {m:score+18,t:`${score+18}개월`,how:'획득점수'};
+}
+function presDx(ca,cla){ const d=ca-cla; if(d>=24) return {t:'언어장애',c:'bad'}; if(d>=12) return {t:'약간의 언어발달지체',c:'mid'}; if(d<=-12) return {t:'다소 빠른 언어발달',c:'ok'}; return {t:'정상 범위',c:'ok'}; }
+const stageOpts='<option value="">연령단계 선택 안 함 (획득점수 기준)</option>'+PRES_ST.map(s=>`<option value="${s[0]}">${s[0]}단계 (${s[1]}-${s[2]}개월) → ${s[3]}개월</option>`).join('')+'<option value="16">15단계까지 “-” 2개 이상 없음 → 78개월 이상</option>';
+
+/* ================= 검사 정의 =================
+   새 검사를 넣으려면 TESTS에 {id, short, name, ref, fields, inputHTML, compute} 를 추가하면 됩니다.
+   compute(ca, v) → {ok, table(html), text(결과 기술 문장), sum(종합 소견용 한 줄)} */
+const TESTS={
+ revt:{
+  short:'REVT', name:'수용·표현 어휘력검사', ref:'김영태 외(2009)',
+  inputHTML:()=>`<div class="grid"><div><label class="f">수용 원점수</label><input data-k="rec" type="number" min="0" max="185" placeholder="0~185"></div>
+    <div><label class="f">표현 원점수</label><input data-k="exp" type="number" min="0" max="185" placeholder="0~185"></div></div>`,
+  compute(ca,v){
+    const g=REVT_G.find(x=>ca>=x[0]&&ca<=x[1]);
+    const rows=[], lines=[], sums=[];
+    for(const [k,nm] of [['rec','수용어휘'],['exp','표현어휘']]){
+      if(v[k]===''||v[k]==null) continue;
+      const s=+v[k]; if(!Number.isInteger(s)||s<0||s>185) return {ok:false,err:'REVT 원점수는 0~185 사이로 넣어 주세요.'};
+      const eq=revtEq(k,s); let pct='-', dx=null;
+      if(g){ const n=g[k==='rec'?3:4]; pct=revtPct(n[4],s); dx=revtDx(n,s); }
+      rows.push(`<tr><td>${nm}</td><td>${s}</td><td>${eq.age}<br><small>(${eq.mt})</small></td><td>${pct}</td><td>${dx?tag(dx.c,dx.t):tag('na','산출 불가')}</td></tr>`);
+      lines.push(`${nm} 원점수 ${s}점으로 등가연령 ${eq.age}${dx?`, 백분위 ${pct}에 해당하여 '${dx.t}' 수준으로 나타남.`:`에 해당함(생활연령이 규준 범위 밖이어서 백분위는 산출하지 않음).`}`);
+      if(dx) sums.push(`${nm} ${dx.t}`);
+      v['_'+k]={eq,pct,dx};
+    }
+    if(!rows.length) return {ok:false};
+    let extra='';
+    if(v._rec&&v._exp&&v._rec.eq.m!=null&&v._exp.eq.m!=null){ const d=v._rec.eq.m-v._exp.eq.m; if(Math.abs(d)>=12) extra=`\n수용어휘 등가월령이 표현어휘보다 ${Math.abs(d)}개월 ${d>0?'높아 이해에 비해 표현 어휘가':'낮아 표현에 비해 이해 어휘가'} 상대적으로 부족함.`; }
+    return {ok:true,
+      table:`<table class="res"><tr><th>구분</th><th>원점수</th><th>등가연령</th><th>백분위수</th><th>진단</th></tr>${rows.join('')}</table>`,
+      text:lines.join('\n')+extra,
+      sum:`REVT 결과 ${sums.length?sums.join(', '):'백분위 산출 불가'}`};
+  }
+ },
+ pres:{
+  short:'PRES', name:'취학전 아동의 수용언어 및 표현언어 발달척도', ref:'김영태 외(2003)',
+  inputHTML:()=>`<div class="grid"><div><label class="f">수용언어 획득점수</label><input data-k="rec" type="number" min="0" max="60" placeholder="0~60"><select data-k="recStage" style="margin-top:6px">${stageOpts}</select></div>
+    <div><label class="f">표현언어 획득점수</label><input data-k="exp" type="number" min="0" max="60" placeholder="0~60"><select data-k="expStage" style="margin-top:6px">${stageOpts}</select></div></div>
+    <p class="hint">획득점수: 1~30번 1점, 31~45번 2점. 연령단계를 고르면 그 단계 평균연령을 언어발달연령으로 써요.</p>`,
+  compute(ca,v){
+    if(v.rec===''||v.exp===''||v.rec==null||v.exp==null) return {ok:false};
+    const r=+v.rec, e=+v.exp; if(![r,e].every(x=>Number.isInteger(x)&&x>=0&&x<=60)) return {ok:false,err:'PRES 획득점수는 0~60 사이로 넣어 주세요.'};
+    const RL=presLA(r,+v.recStage||0), EL=presLA(e,+v.expStage||0);
+    const cla=Math.round(((RL.m??18)+(EL.m??18))/2), dx=presDx(ca,cla);
+    const RP=presPct(ca,'rec',r), EP=presPct(ca,'exp',e);
+    const diff=m=>m==null?'-':(m-ca===0?'0':(m>ca?`+${m-ca}개월`:`-${ca-m}개월`));
+    let text=`수용언어 획득점수 ${r}점으로 수용언어 발달연령 ${RL.t}${RP?`(백분위 ${RP})`:''}, 표현언어 획득점수 ${e}점으로 표현언어 발달연령 ${EL.t}${EP?`(백분위 ${EP})`:''}에 해당함.\n통합언어 발달연령은 ${cla}개월로 생활연령보다 ${ca>cla?`${ca-cla}개월 낮아`:ca<cla?`${cla-ca}개월 높아`:'같아'} '${dx.t}'${dx.t==='정상 범위'?'에 속함.':'로 판단됨.'}`;
+    if(RL.m!=null&&EL.m!=null&&Math.abs(RL.m-EL.m)>=24) text+=`\n수용·표현 발달연령 차이가 ${Math.abs(RL.m-EL.m)}개월로 ${RL.m>EL.m?'표현':'수용'}언어 영역의 어려움이 두드러짐.`;
+    const how=(RL.how===EL.how)?`${RL.how} 기준`:`수용 ${RL.how}·표현 ${EL.how} 기준`;
+    return {ok:true,
+      table:`<table class="res"><tr><th>구분</th><th>획득점수</th><th>언어발달연령</th><th>생활연령과의 차이</th><th>백분위점수</th></tr>
+        <tr><td>수용언어</td><td>${r}</td><td>${RL.t}</td><td>${diff(RL.m)}</td><td>${RP??'-'}</td></tr>
+        <tr><td>표현언어</td><td>${e}</td><td>${EL.t}</td><td>${diff(EL.m)}</td><td>${EP??'-'}</td></tr>
+        <tr><td>통합언어</td><td>-</td><td>${cla}개월</td><td>${diff(cla)}</td><td>-</td></tr>
+        <tr><th>진단</th><td colspan="4">${tag(dx.c,dx.t)} <small style="color:#8C8270">(언어발달연령 ${how})</small></td></tr></table>`,
+      text, sum:`PRES 결과 통합언어 발달연령 ${cla}개월로 ${dx.t}`};
+  }
+ }
+};
+
+/* ================= 상태 ================= */
+let tests=[]; // [{uid, id, v:{}, text, textEdited}]
+let summaryEdited=false, uidSeq=1;
+const caNow=()=>monthsBetween($('bdate').value,$('tdate').value);
+
+$('addBtns').innerHTML=Object.entries(TESTS).map(([id,t])=>`<button type="button" class="chip" data-add="${id}">＋ <b>${t.short}</b> ${t.name}</button>`).join('');
+$('addBtns').addEventListener('click',e=>{ const b=e.target.closest('[data-add]'); if(!b) return; tests.push({uid:uidSeq++,id:b.dataset.add,v:{},text:'',textEdited:false}); renderTests(); });
+
+function renderTests(){
+  const box=$('tests');
+  if(!tests.length){ box.innerHTML='<div class="empty-tests">아직 추가한 검사가 없어요.</div>'; refreshSummary(); return; }
+  box.innerHTML=tests.map(t=>{ const d=TESTS[t.id]; return `<div class="test" data-uid="${t.uid}">
+    <div class="test-h"><h3>${d.short}</h3><span class="full">${d.name}</span><button type="button" class="x" data-del="${t.uid}">삭제</button></div>
+    ${d.inputHTML()}
+    <div class="out"></div>
+    <div class="desc-h"><span>결과 기술</span><button type="button" data-regen="${t.uid}">점수로 다시 쓰기</button></div>
+    <textarea data-text="${t.uid}" placeholder="점수를 넣으면 보고서 문장이 채워져요."></textarea></div>`; }).join('');
+  tests.forEach(t=>{ const el=box.querySelector(`[data-uid="${t.uid}"]`);
+    el.querySelectorAll('[data-k]').forEach(i=>{ if(t.v[i.dataset.k]!=null) i.value=t.v[i.dataset.k]; });
+    el.querySelector('[data-text]').value=t.text; computeOne(t); });
+  refreshSummary();
+}
+function computeOne(t){
+  const el=$('tests').querySelector(`[data-uid="${t.uid}"]`); if(!el) return;
+  const ca=caNow(), out=el.querySelector('.out');
+  if(ca==null||ca<0){ out.innerHTML='<p class="hint">생년월일과 평가일을 먼저 넣어 주세요.</p>'; t.res=null; return; }
+  const r=TESTS[t.id].compute(ca,{...t.v}); t.res=r.ok?r:null;
+  out.innerHTML=r.ok?r.table:(r.err?`<p class="hint" style="color:var(--coral-deep)">${r.err}</p>`:'');
+  if(r.ok&&!t.textEdited){ t.text=r.text; el.querySelector('[data-text]').value=r.text; }
+}
+$('tests').addEventListener('input',e=>{
+  const card=e.target.closest('.test'); if(!card) return; const t=tests.find(x=>x.uid==card.dataset.uid);
+  if(e.target.dataset.k){ t.v[e.target.dataset.k]=e.target.value; computeOne(t); refreshSummary(); }
+  if(e.target.dataset.text){ t.text=e.target.value; t.textEdited=true; }
+});
+$('tests').addEventListener('click',e=>{
+  if(e.target.dataset.del){ tests=tests.filter(x=>x.uid!=e.target.dataset.del); renderTests(); }
+  if(e.target.dataset.regen){ const t=tests.find(x=>x.uid==e.target.dataset.regen); t.textEdited=false; computeOne(t); }
+});
+// select 변경 대비
+$('tests').addEventListener('change',e=>{ if(e.target.dataset.k){ const card=e.target.closest('.test'); const t=tests.find(x=>x.uid==card.dataset.uid); t.v[e.target.dataset.k]=e.target.value; computeOne(t); refreshSummary(); } });
+
+function autoSummary(){
+  const done=tests.filter(t=>t.res); if(!done.length) return '';
+  const nm=$('name').value.trim()||'아동';
+  return `${nm}의 언어 능력을 평가하기 위해 ${done.map(t=>TESTS[t.id].short).join(', ')}를 실시함.\n`+done.map(t=>`· ${t.res.sum}.`).join('\n');
+}
+function refreshSummary(){ if(!summaryEdited) $('summary').value=autoSummary(); }
+$('summary').addEventListener('input',()=>{ summaryEdited=true; });
+$('regenSum').onclick=()=>{ summaryEdited=false; refreshSummary(); };
+
+function updateCA(){
+  const m=caNow();
+  $('ca').innerHTML=m==null?'생년월일과 평가일을 넣으면 생활연령이 계산돼요.':m<0?'생년월일이 평가일보다 늦어요.':`생활연령 <b>${ym(m)}</b> (${m}개월)`;
+  tests.forEach(computeOne); refreshSummary();
+}
+['bdate','tdate'].forEach(id=>$(id).addEventListener('input',updateCA));
+$('name').addEventListener('input',refreshSummary);
+$('tdate').value=(d=>new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10))(new Date());
+
+/* ================= 저장 ================= */
+const KEY='chaeum_eval_report_v1';
+const FIELDS=['name','sex','bdate','tdate','org','examiner','informant','school','reason','obs','summary','rec'];
+function snapshot(){ const o={}; FIELDS.forEach(f=>o[f]=$(f).value); o.tests=tests.map(t=>({id:t.id,v:t.v,text:t.text,textEdited:t.textEdited})); o.summaryEdited=summaryEdited; return o; }
+function restore(o){ FIELDS.forEach(f=>$(f).value=o[f]||''); tests=(o.tests||[]).map(t=>({uid:uidSeq++,...t})); summaryEdited=!!o.summaryEdited; updateCA(); renderTests(); if(o.summary!=null) $('summary').value=o.summary; }
+function loadHist(){ try{ return JSON.parse(localStorage.getItem(KEY))||[]; }catch(e){ return []; } }
+function saveHist(a){ try{ localStorage.setItem(KEY,JSON.stringify(a.slice(0,20))); return true; }catch(e){ return false; } }
+function renderHist(){
+  const a=loadHist();
+  $('hist').innerHTML=a.length?a.map((o,i)=>`<tr><td>${esc(o.name)}</td><td>${dot(o.tdate)}</td><td>${(m=>m==null?'-':ym(m))(monthsBetween(o.bdate,o.tdate))}</td><td>${(o.tests||[]).map(t=>TESTS[t.id]?.short).join(', ')}</td><td>${esc(o.saved)}</td>
+    <td><button class="sm" data-open="${i}">불러오기</button> <button class="sm del" data-rm="${i}">삭제</button></td></tr>`).join(''):'<tr><td colspan="6" style="color:#8C8270;padding:16px">저장한 보고서가 없어요.</td></tr>';
+}
+function save(silent){
+  if(!$('name').value.trim()){ if(!silent) $('msg').textContent='아동명을 넣어 주세요.'; return false; }
+  const o=snapshot(); const d=new Date(); o.saved=`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  const a=loadHist().filter(x=>!(x.name===o.name&&x.tdate===o.tdate&&x.bdate===o.bdate)); a.unshift(o);
+  if(saveHist(a)){ renderHist(); if(!silent){ $('msg').style.color='var(--mint-deep)'; $('msg').textContent='저장했어요.'; setTimeout(()=>{$('msg').textContent='';$('msg').style.color='';},2000);} }
+  return true;
+}
+$('btnSave').onclick=()=>save(false);
+$('hist').addEventListener('click',e=>{
+  const a=loadHist();
+  if(e.target.dataset.open!=null){ restore(a[+e.target.dataset.open]); window.scrollTo({top:0,behavior:'smooth'}); }
+  if(e.target.dataset.rm!=null){ const b=e.target; if(b.dataset.armed){ a.splice(+b.dataset.rm,1); saveHist(a); renderHist(); } else { b.dataset.armed=1; b.textContent='한 번 더'; setTimeout(()=>{ if(b.isConnected){ delete b.dataset.armed; b.textContent='삭제'; } },2500); } }
+});
+
+/* ================= 보고서 ================= */
+const para=s=>esc(s).trim()?`<p class="txt">${esc(s).trim()}</p>`:'<p class="txt" style="color:#999">-</p>';
+$('btnPreview').onclick=()=>{
+  const ca=caNow();
+  if(!$('name').value.trim()){ $('msg').textContent='아동명을 넣어 주세요.'; $('name').focus(); return; }
+  if(ca==null||ca<0){ $('msg').textContent='생년월일과 평가일을 확인해 주세요.'; return; }
+  $('msg').textContent=''; save(true);
+  const done=tests.filter(t=>t.res);
+  const testList=done.length?`<ul>${done.map(t=>`<li>${TESTS[t.id].name}(${TESTS[t.id].short}; ${TESTS[t.id].ref})</li>`).join('')}</ul>`:'<p class="txt" style="color:#999">-</p>';
+  const results=done.map((t,i)=>`<h4>${i+1}) ${TESTS[t.id].name}(${TESTS[t.id].short})</h4>${t.res.table.replace(/<span class="tag [a-z]+">([^<]*)<\/span>/g,'<b>$1</b>').replace(/<small[^>]*>/g,'<small>')}${para(t.text)}`).join('');
+  $('sheet').innerHTML=`
+    <h1>언어평가 보고서</h1>
+    <h2>1. 인적 사항</h2>
+    <table>
+      <tr><th style="width:15%">아동명</th><td style="width:35%">${esc($('name').value)}${$('sex').value?` (${$('sex').value})`:''}</td><th style="width:15%">평가일</th><td>${dot($('tdate').value)}</td></tr>
+      <tr><th>생년월일</th><td>${dot($('bdate').value)}</td><th>생활연령</th><td>${ym(ca)} (${ca}개월)</td></tr>
+      <tr><th>정보제공자</th><td>${esc($('informant').value)||'-'}</td><th>평가자</th><td>${esc($('examiner').value)||'-'}</td></tr>
+      <tr><th>소속</th><td>${esc($('school').value)||'-'}</td><th>평가 기관</th><td>${esc($('org').value)||'-'}</td></tr>
+    </table>
+    <h2>2. 의뢰 사유 및 배경 정보</h2>${para($('reason').value)}
+    <h2>3. 실시 검사</h2>${testList}
+    <h2>4. 검사 결과</h2>${results||'<p class="txt" style="color:#999">-</p>'}
+    <h2>5. 행동 관찰</h2>${para($('obs').value)}
+    <h2>6. 종합 소견</h2>${para($('summary').value)}
+    <h2>7. 권고 사항</h2>${para($('rec').value)}
+    <div class="sign">${dot($('tdate').value)}<br>평가자: ${esc($('examiner').value)||'__________'} (인)</div>`;
+  $('overlay').classList.add('show'); $('overlay').scrollTop=0; document.body.style.overflow='hidden';
+};
+$('btnClose').onclick=()=>{ $('overlay').classList.remove('show'); document.body.style.overflow=''; };
+$('btnPrint').onclick=()=>{ try{ window.print(); }catch(e){} };
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('overlay').classList.contains('show')) $('btnClose').click(); });
+
+updateCA(); renderHist();
+</script>
+</body>
+</html>
