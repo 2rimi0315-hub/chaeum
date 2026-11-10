@@ -105,6 +105,15 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--sun-deep
 .sheet ul{margin:4px 0;padding-left:18px}
 .sheet .sign{margin-top:26px;text-align:right}
 .sheet .note{font-size:11px;color:#666}
+#lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-items:center;padding:20px}
+#lock.hide{display:none}
+.lock-card{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:28px 26px;width:min(340px,100%);text-align:center;box-shadow:0 10px 30px rgba(120,90,0,.12)}
+.lock-card h2{font-family:var(--font-display);font-weight:400;font-size:24px;margin:0 0 6px}
+.lock-card p{margin:0 0 16px;color:var(--muted);font-size:14px}
+.lock-card input{text-align:center;font-size:20px;letter-spacing:6px;margin-bottom:12px}
+.lock-card .btn{width:100%}
+#lockMsg{min-height:20px;margin-top:10px;color:var(--coral-deep);font-size:13.5px}
+@media print{#lock{display:none!important}}
 @media (max-width:640px){.grid,.grid3{grid-template-columns:1fr}.sheet{padding:24px 16px}}
 @media print{
   @page{size:A4;margin:14mm 13mm}
@@ -118,6 +127,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--sun-deep
 </style>
 </head>
 <body>
+<div id="lock"><form id="lockForm" class="lock-card" autocomplete="off">
+  <h2>채움 평가 보고서</h2><p>센터에서 받은 코드를 입력해 주세요.</p>
+  <input id="lockCode" type="password" inputmode="numeric" placeholder="코드" aria-label="잠금 코드">
+  <button class="btn main" type="submit">열기</button><div id="lockMsg"></div></form></div>
 <main class="wrap">
   <section class="hero">
     <h1>채움 평가 보고서</h1>
@@ -175,6 +188,24 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--sun-deep
 <script>
 /* ================= 공통 ================= */
 const $=id=>document.getElementById(id);
+/* ================= 잠금 =================
+   간단한 접근 잠금(코드 원문은 저장하지 않고 해시만 비교). 브라우저를 닫을 때까지 유지. */
+(()=>{
+  const HASH='e5fde7c9e4e6f6b3cc5173ed47c17038372ddb6434ebfd54c4a6c1e94ee2f7f7', KEY='chaeum_eval_unlocked', lock=$('lock');
+  try{ if(sessionStorage.getItem(KEY)===HASH){ lock.classList.add('hide'); return; } }catch(e){}
+  setTimeout(()=>$('lockCode').focus(),50);
+  $('lockForm').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const code=$('lockCode').value.trim();
+    if(!(window.crypto&&crypto.subtle)){ $('lockMsg').textContent='이 브라우저에서는 열 수 없어요. 크롬에서 열어 주세요.'; return; }
+    const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('chaeum-eval:'+code));
+    const hex=[...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+    if(hex===HASH){ try{ sessionStorage.setItem(KEY,HASH); }catch(e){} lock.classList.add('hide'); }
+    else { $('lockMsg').textContent='코드가 맞지 않아요.'; $('lockCode').select(); }
+  });
+})();
+
+
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const dot=d=>d?d.replace(/-/g,'.'):'';
 const ym=m=>`${Math.floor(m/12)}세 ${m%12}개월`;
