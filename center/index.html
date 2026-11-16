@@ -412,6 +412,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
       <h2>기관 정보</h2>
       <label class="f">기관명<input id="setName"></label>
       <label class="chk" style="margin-top:10px"><input type="checkbox" id="setAuto"> 정기 수업 시간으로 이번 달·다음 달 일정을 자동으로 만들기</label>
+      <label class="chk" style="margin-top:6px"><input type="checkbox" id="setAutoDone"> 수업 시간이 끝나면 '예정' 회기를 자동으로 '완료'로 바꾸기</label>
       <div class="sep"></div>
       <h2>선생님 관리</h2>
       <p class="muted tiny" style="margin-top:-6px">로그인 이메일을 적은 선생님만 로그인할 수 있어요. 일지는 담당 선생님과 관리자만 볼 수 있어요. 새 선생님은 여기 이메일을 적은 뒤, Supabase → Authentication → Users에서 같은 이메일로 계정을 만들어 주세요.</p>
@@ -729,7 +730,7 @@ const TABLE='center_records';
 let snap=new Map(),pending=0,queue=Promise.resolve(),me=null;
 function syncState(t,cls){const s=$('#sync');s.textContent=t;s.className='sync '+(cls||'')}
 const KINDS={client:'clients',event:'events',payment:'payments',inquiry:'inquiries',assess:'assess',notice:'notices',file:'files'};
-function toRecords(){const r=[{id:'settings',kind:'settings',data:{center:D.center,therapists:D.therapists,programs:D.programs,holidays:D.holidays||[],autoGen:D.autoGen!==false,vouchers:D.vouchers||[]}}];
+function toRecords(){const r=[{id:'settings',kind:'settings',data:{center:D.center,therapists:D.therapists,programs:D.programs,holidays:D.holidays||[],autoGen:D.autoGen!==false,autoDone:D.autoDone!==false,vouchers:D.vouchers||[]}}];
   for(const[k,arr]of Object.entries(KINDS))(D[arr]||[]).forEach(x=>r.push({id:x.id,kind:k,data:x,owner:k=='assess'?(x.owner||null):null}));
   Object.values(D.logs||{}).forEach(l=>r.push({id:'log_'+l.eventId,kind:'log',data:l,owner:l.owner||null}));return r}
 function chunk(a,n){const o=[];for(let i=0;i<a.length;i+=n)o.push(a.slice(i,i+n));return o}
@@ -772,7 +773,7 @@ async function startApp(){
     save();
   }catch(e){console.error(e);syncState('연결 실패','err');toast('서버에서 자료를 불러오지 못했어요');return}
   $('#login').classList.add('off');syncState('저장됨');renderAll();
-  setTimeout(autoGenerate,500);
+  setTimeout(autoGenerate,500);setTimeout(autoComplete,900);
 }
 function showLogin(msg){$('#login').classList.remove('off');$('#loginMsg').textContent=msg||''}
 async function doLogin(ev){ev.preventDefault();$('#loginMsg').textContent='';
@@ -781,7 +782,7 @@ async function doLogin(ev){ev.preventDefault();$('#loginMsg').textContent='';
   $('#lgPw').value='';me=data.user;startApp()}
 async function logout(){if(pending&&!confirm('아직 저장 중인 내용이 있어요. 그래도 로그아웃할까요?'))return;await sb.auth.signOut();me=null;D=blank();Object.values(KINDS).forEach(a=>D[a]=[]);snap=new Map();renderAll();showLogin()}
 // 다른 선생님이 바꾼 내용 가져오기 (30초마다, 창으로 돌아올 때)
-async function refresh(){if(!me||pending||document.querySelector('.modal.on'))return;try{await pull();renderAll();syncState('저장됨')}catch(e){syncState('연결 끊김','err')}}
+async function refresh(){if(!me||pending||document.querySelector('.modal.on'))return;try{await pull();renderAll();syncState('저장됨');autoComplete()}catch(e){syncState('연결 끊김','err')}}
 setInterval(refresh,30000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
 window.addEventListener('beforeunload',e=>{if(pending){e.preventDefault();e.returnValue=''}});
@@ -871,9 +872,9 @@ function renderCal(){
     body.innerHTML=`<div class="card agenda">${days.length?days.map(k=>{const d=parse(k);return `<div class="day"><h4>${d.getMonth()+1}월 ${d.getDate()}일 (${DOW[d.getDay()]}) <span class="muted tiny">${(map[k]||[]).length}건</span></h4>${(map[k]||[]).map(agRow).join('')||'<div class="empty">일정이 없어요. <button class="btn sm" onclick="openEvent(null,\''+k+'\')">＋ 일정 등록</button></div>'}</div>`}).join(''):'<div class="empty">조건에 맞는 일정이 없어요.</div>'}</div>`;
   }
 }
-function agRow(e){const t=ther(e.therapistId);return `<div class="agrow" onclick="openEvent('${e.id}')"><div><b>${ampm(e.time)}</b><div class="muted tiny">${e.dur||''}분</div></div><div><span class="dot" style="background:${t?.color||'#bbb'}"></span> ${esc(evLabel(e))} <span class="muted tiny">· ${esc(t?.name||'담당 없음')} · ${e.category}</span>${e.memo?`<div class="muted tiny">${esc(e.memo)}</div>`:''}</div><div class="stbtns" onclick="event.stopPropagation()">${e.clientId&&canLog(e)?`<button class="${hasLog(e)?'on':''}" onclick="openLog('${e.id}')">${hasLog(e)?'일지 ✓':'일지'}</button>`:''}${['완료','취소'].map(s=>`<button class="${e.status==s?'on':''}" onclick="setStatus('${e.id}','${s}')">${s}</button>`).join('')}<span class="badge b-${e.status.replace(/[()]/g,'')}">${e.status}</span></div></div>`}
+function agRow(e){const t=ther(e.therapistId);return `<div class="agrow" onclick="openEvent('${e.id}')"><div><b>${ampm(e.time)}</b><div class="muted tiny">${e.dur||''}분</div></div><div><span class="dot" style="background:${t?.color||'#bbb'}"></span> ${esc(evLabel(e))} <span class="muted tiny">· ${esc(t?.name||'담당 없음')} · ${e.category}</span>${e.memo?`<div class="muted tiny">${esc(e.memo)}</div>`:''}</div><div class="stbtns" onclick="event.stopPropagation()">${e.clientId&&canLog(e)?`<button class="${hasLog(e)?'on':''}" onclick="openLog('${e.id}')">${hasLog(e)?'일지 ✓':'일지'}</button>`:''}${['완료','취소'].map(s=>`<button class="${e.status==s?'on':''}" onclick="setStatus('${e.id}','${s}')">${s}</button>`).join('')}<span class="badge b-${e.status.replace(/[()]/g,'')}" ${e.autoDone&&e.status=='완료'?'title="수업 시간이 지나 자동으로 완료됐어요"':''}>${e.status}${e.autoDone&&e.status=='완료'?' (자동)':''}</span></div></div>`}
 function dayClick(k){cur=parse(k);view='day';document.querySelectorAll('#viewSeg button').forEach(x=>x.classList.toggle('on',x.dataset.v=='day'));renderCal()}
-function setStatus(id,s){const e=D.events.find(x=>x.id==id);e.status=s;save();renderCal();toast(`${s}(으)로 변경했어요`)}
+function setStatus(id,s){const e=D.events.find(x=>x.id==id);e.status=s;e.autoDone=false;e.keepStatus=s=='예정';save();renderCal();toast(`${s}(으)로 변경했어요`)}
 
 /* ---------- 일정 모달 ---------- */
 let editEv=null;
@@ -918,7 +919,7 @@ function saveEvent(){
   if(grp)return saveGroupEvent(v);
   if(cat=='재활'&&!v.clientId)return toast('이용자를 선택하세요');
   if(cat!='재활'&&!v.clientId&&!v.title)return toast(cat=='상담/평가'?'이용자를 고르거나 제목을 입력하세요':'일정 제목을 입력하세요');
-  if(editEv){Object.assign(editEv,v);toast('일정을 수정했어요')}
+  if(editEv){const was=editEv.status;Object.assign(editEv,v);if(was!=v.status){editEv.autoDone=false;editEv.keepStatus=v.status=='예정'}toast('일정을 수정했어요')}
   else{const n=Number($('#evRep').value);const sid=n>1?uid():'';const d0=parse(v.date);
     for(let i=0;i<n;i++){const d=new Date(d0);d.setDate(d0.getDate()+7*i);D.events.push({...v,id:uid(),date:ymd(d),seriesId:sid,status:i==0?v.status:'예정'})}
     toast(n>1?`${n}주 반복 일정을 등록했어요`:'일정을 등록했어요')}
@@ -1048,6 +1049,13 @@ function receipt(id){const p=D.payments.find(x=>x.id==id);const c=client(p.clien
   <tr><th>금액</th><td colspan="3" style="font-size:18px"><b>${won(p.amount)}원</b></td></tr></table>
   <p style="text-align:center;margin-top:24px">위 금액을 정히 영수합니다.</p><p style="text-align:center;font-weight:700;font-size:16px;margin-top:20px">${esc(D.center)}</p></div>`;
   r.classList.add('print');window.print();setTimeout(()=>r.classList.remove('print'),500)}
+
+/* ---------- 수업 끝나면 자동 완료 ---------- */
+function evEnd(e){const[y,m,d]=e.date.split('-').map(Number);if(!e.time)return new Date(y,m-1,d,23,59);const[h,mi]=e.time.split(':').map(Number);return new Date(y,m-1,d,h,mi+(Number(e.dur)||40))}
+function autoComplete(){if(D.autoDone===false||!D.events)return 0;const now=new Date();let n=0;
+  D.events.forEach(e=>{if(e.status!='예정'||e.keepStatus||!e.clientId||!['재활','상담/평가'].includes(e.category))return;if(evEnd(e)<=now){e.status='완료';e.autoDone=true;n++}});
+  if(n){save();renderAll();toast(`끝난 수업 ${n}건을 자동으로 완료 처리했어요`)}return n}
+setInterval(()=>{if(me)autoComplete()},60000);
 
 /* ---------- 정기 일정 자동 생성 ---------- */
 const isGen=e=>e.genId&&(e.genId.startsWith('auto_')||e.genId.startsWith('gen_'));
@@ -1458,10 +1466,11 @@ async function changePw(){const a=$('#pw1').value,b=$('#pw2').value;
 
 /* ---------- 설정 ---------- */
 function renderSettings(){renderVouchers();$('#myEmail').textContent=me?.email||'로그인 안 됨';
-  $('#setName').value=D.center;$('#setAuto').checked=D.autoGen!==false;
+  $('#setName').value=D.center;$('#setAuto').checked=D.autoGen!==false;$('#setAutoDone').checked=D.autoDone!==false;
   $('#therList').innerHTML=D.therapists.map(t=>`<div class="row" style="padding:4px 0"><input type="color" value="${t.color}" style="width:36px;padding:2px" onchange="updT('${t.id}','color',this.value)"><input value="${esc(t.name)}" style="width:90px" onchange="updT('${t.id}','name',this.value)"><input value="${esc(t.role)}" style="width:90px" onchange="updT('${t.id}','role',this.value)"><input type="email" value="${esc(t.email||'')}" placeholder="로그인 이메일" style="width:170px" ${me&&!me.admin?'disabled':''} onchange="setTherEmail('${t.id}',this.value)"><label class="chk tiny"><input type="checkbox" ${t.admin?'checked':''} ${me&&!me.admin?'disabled':''} onchange="setTherAdmin('${t.id}',this.checked)">관리자</label><button class="btn sm danger" onclick="delT('${t.id}')" ${me&&!me.admin?'disabled':''}>삭제</button></div>`).join('');
   $('#progList').innerHTML=D.programs.map(p=>`<div class="row" style="padding:4px 0"><input value="${esc(p.name)}" style="width:110px" onchange="updP('${p.id}','name',this.value)"><input type="number" value="${p.fee}" style="width:90px" onchange="updP('${p.id}','fee',+this.value)"><span class="tiny muted">원</span><input type="number" value="${p.min}" style="width:60px" onchange="updP('${p.id}','min',+this.value)"><span class="tiny muted">분</span><label class="chk tiny"><input type="checkbox" ${p.group?'checked':''} onchange="updP('${p.id}','group',this.checked)">그룹</label><button class="btn sm danger" onclick="delP('${p.id}')">삭제</button></div>`).join('');
 }
+$('#setAutoDone').onchange=e=>{D.autoDone=e.target.checked;save();if(D.autoDone)autoComplete()};
 $('#setAuto').onchange=e=>{D.autoGen=e.target.checked;save();if(D.autoGen)autoGenerate()};
 $('#setName').onchange=e=>{D.center=e.target.value.trim()||'센터';save();setTitle()};
 function setTitle(){$('#centerTitle').innerHTML=esc(D.center)+'<small>센터 관리</small>';document.title=D.center+' 센터 관리'}
