@@ -236,6 +236,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 <section class="page" id="p-clients">
   <div class="row" style="margin-bottom:12px">
     <button class="btn pri" onclick="openClient()">＋ 이용자 등록</button>
+    <label class="btn">엑셀로 한꺼번에 등록<input type="file" accept=".xlsx,.xls,.csv" onchange="xlImport(this)" hidden></label>
     <input id="cSearch" placeholder="이름·보호자·연락처 검색" class="grow" style="max-width:260px">
     <select id="cStatusF"><option value="">전체 상태</option><option>이용중</option><option>대기</option><option>종결</option></select>
     <select id="cTherF"></select>
@@ -475,6 +476,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
       <div class="row">
         <button class="btn" onclick="exportData()">백업 파일 내려받기</button>
         <label class="btn">백업 파일 불러오기<input type="file" accept=".json" onchange="importData(this)" hidden></label>
+        <label class="btn">엑셀로 이용자 등록<input type="file" accept=".xlsx,.xls,.csv" onchange="xlImport(this)" hidden></label>
         <button class="btn" onclick="loadSample()">예시 데이터 넣기</button>
         <span class="grow"></span>
         <button class="btn danger" onclick="resetAll()">전체 초기화</button>
@@ -784,6 +786,20 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
     <div class="row" style="margin-top:10px"><button class="btn pri" onclick="saveTpl()">문구 저장</button><button class="btn" onclick="resetTpl()">처음 문구로 되돌리기</button></div>
   </div>
 </section>
+
+<!-- ============ 엑셀 이용자 등록 ============ -->
+<div class="modal" id="mXl"><div class="box" style="width:min(980px,100%)">
+  <div class="mh"><h3>엑셀로 이용자 등록</h3><button class="btn ghost" onclick="closeM('mXl')">✕</button></div>
+  <div class="mb">
+    <div class="muted tiny" id="xlInfo" style="margin-bottom:8px"></div>
+    <div class="row tiny" style="margin-bottom:8px"><label class="chk"><input type="checkbox" id="xlAll" checked onchange="document.querySelectorAll('.xlChk:not(:disabled)').forEach(c=>c.checked=this.checked);xlCount()"> 전체 선택</label><span class="grow"></span><span id="xlCnt"></span></div>
+    <div class="tablewrap" style="max-height:55vh;overflow:auto"><table>
+      <thead><tr><th></th><th>이름</th><th>성별</th><th>생년월일</th><th>보호자·연락처</th><th>진단</th><th>시작일</th><th>상태</th><th>메모</th></tr></thead>
+      <tbody id="xlBody"></tbody></table></div>
+    <p class="muted tiny" style="margin-bottom:0">담당 선생님·프로그램·정기 수업 시간은 엑셀에 없어서 비워 둬요. 등록 후 이용자 정보에서 넣어 주세요.</p>
+  </div>
+  <div class="mf"><button class="btn" onclick="closeM('mXl')">취소</button><button class="btn pri" onclick="xlSave()">선택한 이용자 등록</button></div>
+</div></div>
 
 <section class="page" id="p-receipt"></section>
 
@@ -1833,6 +1849,39 @@ function tpIns(k,s){const t=$('#tp_'+k);const a=t.selectionStart??t.value.length
 function saveTpl(){D.msgTpl={};Object.keys(TPL_INFO).forEach(k=>{const v=$('#tp_'+k).value.trim();if(v&&v!==TPL_DEF[k])D.msgTpl[k]=v});
   D.msgCfg={account:$('#tpAccount').value.trim(),phone:$('#tpPhone').value.trim()};save();toast('문구를 저장했어요')}
 function resetTpl(){if(!confirm('문구를 처음 상태로 되돌릴까요? (계좌·연락처는 그대로예요)'))return;D.msgTpl={};save();renderTpl();toast('처음 문구로 되돌렸어요')}
+
+/* ---------- 엑셀로 이용자 등록 (케어플 이용자 엑셀 등) ---------- */
+let XL=[];
+function loadXlsxLib(){return window.XLSX?Promise.resolve():new Promise((ok,no)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=ok;sc.onerror=no;document.head.appendChild(sc)})}
+const XL_REL={'모':'어머니','부':'아버지','조모':'할머니','조부':'할아버지','배우자':'배우자','본인':'본인','기타':''};
+function xlDate(v){if(v==null||v==='')return'';if(v instanceof Date)return ymd(v);if(typeof v=='number'){const d=new Date(Math.round((v-25569)*864e5));return ymd(new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()))}
+  const m=String(v).match(/(\d{4})[-./]\s*(\d{1,2})[-./]\s*(\d{1,2})/);return m?`${m[1]}-${pad(+m[2])}-${pad(+m[3])}`:''}
+function xlPhones(v){return String(v||'').split(/\n|,|\//).map(x=>x.trim()).filter(Boolean).map(x=>{const r=(x.match(/\(([^)]*)\)/)||[])[1]||'';const num=(x.match(/0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4}/)||[])[0]||x.replace(/\([^)]*\)/,'').trim();return{rel:r,num}})}
+async function xlImport(inp){const f=inp.files[0];inp.value='';if(!f)return;
+  try{await loadXlsxLib()}catch(e){return toast('엑셀 읽기 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요')}
+  let rows;try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true});const ws=wb.Sheets[wb.SheetNames[0]];rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true})}catch(e){return toast('엑셀 파일을 읽지 못했어요')}
+  const hi=rows.findIndex(r=>r.some(c=>/^(이용자|이름|성명|아동명)$/.test(String(c).trim())));if(hi<0)return toast("'이용자' 또는 '이름' 칸이 있는 엑셀이 필요해요");
+  const H=rows[hi].map(c=>String(c).trim());const col=(...names)=>H.findIndex(h=>names.includes(h));
+  const C={name:col('이용자','이름','성명','아동명'),gender:col('성별'),birth:col('생년월일'),dx:col('장애유형','진단명','진단'),grade:col('장애등급'),dx2:col('중복장애내용'),phone:col('연락처','보호자연락처','전화번호'),guardian:col('보호자','보호자명'),addr:col('주소'),school:col('학교'),first:col('초기상담일시','초기상담일'),route:col('유입경로'),route2:col('유입경로 관련 참고사항'),status:col('상태'),memo:col('메모','비고'),email:col('이메일'),start:col('시작일','등록일')};
+  const g=(r,k)=>C[k]<0?'':String(r[C[k]]??'').trim();
+  XL=rows.slice(hi+1).filter(r=>g(r,'name')&&g(r,'name')!='-').map(r=>{
+    const ph=xlPhones(g(r,'phone'));const first=ph[0]||{rel:'',num:''};
+    let dx=g(r,'dx');if(/^(미응답|-|없음)$/.test(dx))dx='';if(dx&&g(r,'grade'))dx+=` (${g(r,'grade')})`;if(g(r,'dx2'))dx+=(dx?', ':'')+g(r,'dx2');
+    const st=g(r,'status');const status=/종결|퇴원|중단|해지/.test(st)?'종결':/대기|상담|문의/.test(st)?'대기':'이용중';
+    const start=xlDate(C.start>=0?r[C.start]:'')||xlDate((st.match(/\(([^)]+)\)/)||[])[1]||'')||xlDate(C.first>=0?r[C.first]:'');
+    const memo=[g(r,'memo'),ph.slice(1).map(p=>`${p.rel?'('+p.rel+') ':''}${p.num}`).join(' / ')&&'추가 연락처: '+ph.slice(1).map(p=>`${p.rel?'('+p.rel+') ':''}${p.num}`).join(' / '),g(r,'school')&&'학교: '+g(r,'school'),g(r,'addr')&&'주소: '+g(r,'addr'),g(r,'email')&&'이메일: '+g(r,'email'),(g(r,'route')||g(r,'route2'))&&'유입경로: '+[g(r,'route'),g(r,'route2')].filter(Boolean).join(' - ')].filter(Boolean).join('\n');
+    const gender=/^(남|M|male)/i.test(g(r,'gender'))?'남':/^(여|F|female)/i.test(g(r,'gender'))?'여':'';
+    const c={name:g(r,'name'),birth:xlDate(C.birth>=0?r[C.birth]:''),gender,guardian:g(r,'guardian')||(XL_REL[first.rel]??first.rel),phone:first.num,start,dx,memo,status,voucher:'',copay:'',therapistId:'',programIds:[],programId:'',slots:[]};
+    c.dup=D.clients.some(x=>(x.name||'').trim()==c.name&&(!c.birth||!x.birth||x.birth==c.birth));return c});
+  if(!XL.length)return toast('등록할 이용자가 없어요');
+  const dups=XL.filter(c=>c.dup).length;
+  $('#xlInfo').textContent=`${f.name} · ${XL.length}명을 찾았어요.${dups?` 이미 등록된 ${dups}명은 빼 두었어요.`:''} 확인 후 등록을 눌러 주세요.`;
+  $('#xlBody').innerHTML=XL.map((c,i)=>`<tr${c.dup?' style="opacity:.45"':''}><td><input type="checkbox" class="xlChk" data-i="${i}" ${c.dup?'disabled':'checked'} onchange="xlCount()"></td><td><b>${esc(c.name)}</b>${c.dup?'<div class="tiny red">이미 있음</div>':''}</td><td>${c.gender}</td><td>${c.birth}${c.birth?`<div class="muted tiny">${age(c.birth)}</div>`:''}</td><td>${esc(c.guardian)}<div class="muted tiny">${esc(c.phone)}</div></td><td class="tiny">${esc(c.dx)}</td><td class="tiny">${c.start}</td><td><span class="badge b-${c.status}">${c.status}</span></td><td class="tiny muted" style="max-width:220px;white-space:pre-wrap">${esc(c.memo)}</td></tr>`).join('');
+  $('#xlAll').checked=true;xlCount();openM('mXl')}
+function xlCount(){$('#xlCnt').textContent=`${document.querySelectorAll('.xlChk:checked').length}명 선택`}
+function xlSave(){const sel=[...document.querySelectorAll('.xlChk:checked')].map(c=>XL[+c.dataset.i]);if(!sel.length)return toast('등록할 이용자를 고르세요');
+  const today=ymd(new Date());sel.forEach(c=>{const v={...c};delete v.dup;v.id=uid();v.created=today;if(!v.start)v.start=today;D.clients.push(v)});
+  save();closeM('mXl');renderAll();toast(`${sel.length}명을 등록했어요`)}
 
 function renderAll(){setTitle();renderFilters();renderCal();renderClients();renderConsult();renderLog();renderPay();renderStatus();renderBoard();renderSettings();renderMsg()}
 D=blank();Object.values(KINDS).forEach(a=>D[a]=[]);renderAll();
