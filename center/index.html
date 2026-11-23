@@ -261,6 +261,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
     <label class="chk"><input type="checkbox" id="payIncPlan"> 예정 일정도 청구에 포함</label>
     <span class="grow"></span>
     <button class="btn" onclick="openPayment()">＋ 수납 입력</button>
+    <label class="btn">케어플 수납현황 불러오기<input type="file" accept=".xlsx,.xls" multiple onchange="phImport(this)" hidden></label>
   </div>
   <div class="stats">
     <div class="stat"><div class="k">청구액</div><div class="v" id="sBill">0</div></div>
@@ -282,6 +283,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
       <tbody id="payList"></tbody>
     </table>
   </div>
+  <div id="phWrap" style="margin-top:22px"></div>
 </section>
 
 <!-- ================= 일지 ================= -->
@@ -827,7 +829,7 @@ const BILLABLE=['완료'];
 let D;
 function blank(){return{center:'채움언어학습연구소',therapists:[{id:uid(),name:'이유림',role:'센터장',color:'#e8a33d'}],programs:[
   {id:uid(),name:'언어재활',fee:55000,min:40},{id:uid(),name:'난독',fee:60000,min:50},{id:uid(),name:'PECS',fee:55000,min:40},{id:uid(),name:'사회성그룹',fee:55000,min:50,group:true},{id:uid(),name:'초기상담',fee:50000,min:50},{id:uid(),name:'언어평가',fee:150000,min:90}],
-  clients:[],events:[],payments:[],logs:{},rnotes:[],holidays:[],inquiries:[],assess:[],notices:[],files:[],
+  clients:[],events:[],payments:[],logs:{},rnotes:[],payhist:[],holidays:[],inquiries:[],assess:[],notices:[],files:[],
   vouchers:[{id:uid(),name:'발달재활서비스',support:0,copay:0},{id:uid(),name:'언어발달지원',support:0,copay:0}]}}
 /* ---------- Supabase 연결 ---------- */
 const SB_URL='https://jqwnybitiotzuyawzhwk.supabase.co';
@@ -836,7 +838,7 @@ const sb=supabase.createClient(SB_URL,SB_KEY);
 const TABLE='center_records';
 let snap=new Map(),pending=0,queue=Promise.resolve(),me=null;
 function syncState(t,cls){const s=$('#sync');s.textContent=t;s.className='sync '+(cls||'')}
-const KINDS={client:'clients',event:'events',payment:'payments',inquiry:'inquiries',assess:'assess',notice:'notices',file:'files',rnote:'rnotes'};
+const KINDS={client:'clients',event:'events',payment:'payments',inquiry:'inquiries',assess:'assess',notice:'notices',file:'files',rnote:'rnotes',payhist:'payhist'};
 function toRecords(){const r=[{id:'settings',kind:'settings',data:{center:D.center,therapists:D.therapists,programs:D.programs,holidays:D.holidays||[],autoGen:D.autoGen!==false,autoDone:D.autoDone!==false,vouchers:D.vouchers||[],msgTpl:D.msgTpl||{},msgCfg:D.msgCfg||{}}}];
   for(const[k,arr]of Object.entries(KINDS))(D[arr]||[]).forEach(x=>r.push({id:x.id,kind:k,data:x,owner:(k=='assess'||k=='rnote')?(x.owner||null):null}));
   Object.values(D.logs||{}).forEach(l=>r.push({id:'log_'+l.eventId,kind:'log',data:l,owner:l.owner||null}));return r}
@@ -1096,6 +1098,7 @@ function openClient(id){
     <details><summary class="tiny" style="cursor:pointer;font-weight:600">최근 일정 ${Math.min(evs.length,15)}건 / 수납 ${pays.length}건 보기</summary><div style="max-height:220px;overflow:auto;margin-top:6px">${evs.slice(0,15).map(e=>`<div class="tiny row" style="padding:3px 0;border-bottom:1px solid var(--line2)"><span style="width:90px">${e.date}</span><span style="width:70px">${ampm(e.time)}</span><span class="grow">${esc(prog(e.programId)?.name||'')}</span><span class="badge b-${e.status.replace(/[()]/g,'')}">${e.status}</span></div>`).join('')}
     ${pays.length?`<div class="tiny" style="margin-top:8px;font-weight:700">수납</div>`+pays.map(p=>`<div class="tiny row" style="padding:3px 0"><span style="width:90px">${p.date}</span><span style="width:70px">${p.month} 분</span><span class="grow">${p.method}</span><b>${won(p.amount)}원</b></div>`).join(''):''}</div></details>`}
   else $('#clHistory').innerHTML='';
+  if(editCl)$('#clHistory').insertAdjacentHTML('beforeend',phClientHtml(c));
   openM('mClient');
 }
 function saveClient(){
@@ -1131,7 +1134,7 @@ function renderPay(){
   $('#sBill').textContent=won(sum('bill'));$('#sPaid').textContent=won(sum('paid'));$('#sDue').textContent=won(sum('due'));$('#sSess').textContent=sum('n');
   $('#payBody').innerHTML=rows.length?rows.map(r=>{const t=ther(r.c.therapistId);return `<tr><td><b class="click" style="cursor:pointer" onclick="openClient('${r.c.id}')">${esc(cname(r.c))}</b>${r.c.voucher?` <span class="badge">${esc(r.c.voucher)}</span>`:''}</td><td>${esc(t?.name||'-')}</td><td class="num">${r.n}</td><td class="num">${won(r.bill)}</td><td class="num green">${won(r.paid)}</td><td class="num ${r.due>0?'red':''}"><b>${won(r.due)}</b></td><td>${r.due>0?`<button class="btn sm pri" onclick="openPayment('${r.c.id}','${m}',${r.due})">수납</button>`:r.due<0?'<span class="badge">선납/과납</span>':'<span class="badge b-완료">완납</span>'}</td></tr>`}).join('')
     :`<tr><td colspan="7" class="empty">이 달에 청구할 일정이 없어요. 일정 상태를 '완료'로 바꾸면 청구액에 잡혀요.</td></tr>`;
-  const pl=D.payments.filter(p=>p.month==m&&(!th||clThers(client(p.clientId)||{}).includes(th))).sort((a,b)=>b.date.localeCompare(a.date));
+  const pl=D.payments.filter(p=>p.month==m&&(!th||clThers(client(p.clientId)||{}).includes(th))).sort((a,b)=>b.date.localeCompare(a.date));renderPayHist(m);
   $('#payList').innerHTML=pl.length?pl.map(p=>`<tr><td>${p.date}</td><td>${esc(cname(client(p.clientId))||'(삭제됨)')}</td><td>${p.month}</td><td>${p.method}</td><td class="num"><b>${won(p.amount)}</b></td><td class="muted">${esc(p.memo)}</td><td style="white-space:nowrap"><button class="btn sm" onclick="receipt('${p.id}')">영수증</button> <button class="btn sm danger" onclick="delPay('${p.id}')">삭제</button></td></tr>`).join('')
     :'<tr><td colspan="7" class="empty">수납 내역이 없어요.</td></tr>';
 }
@@ -1882,6 +1885,42 @@ function xlCount(){$('#xlCnt').textContent=`${document.querySelectorAll('.xlChk:
 function xlSave(){const sel=[...document.querySelectorAll('.xlChk:checked')].map(c=>XL[+c.dataset.i]);if(!sel.length)return toast('등록할 이용자를 고르세요');
   const today=ymd(new Date());sel.forEach(c=>{const v={...c};delete v.dup;v.id=uid();v.created=today;if(!v.start)v.start=today;D.clients.push(v)});
   save();closeM('mXl');renderAll();toast(`${sel.length}명을 등록했어요`)}
+
+/* ---------- 케어플 지난 수납 기록 (수업별 수납현황 엑셀) ---------- */
+const PH_N=v=>{const n=Number(String(v??'').replace(/[^\d.-]/g,''));return isNaN(n)?0:n};
+async function phImport(inp){const files=[...inp.files];inp.value='';if(!files.length)return;
+  try{await loadXlsxLib()}catch(e){return toast('엑셀 읽기 도구를 불러오지 못했어요. 인터넷 연결을 확인해 주세요')}
+  const got=[];
+  for(const f of files){try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:true});
+    const title=rows.flat().map(String).find(x=>/\d{4}-\d{2}\s*수업별 수납현황/.test(x))||f.name;const mm=(title.match(/(\d{4})-(\d{2})/)||f.name.match(/(\d{4})-(\d{2})/));
+    const hi=rows.findIndex(r=>r.some(c=>String(c).trim()=='이용자')&&r.some(c=>String(c).includes('수납')));if(!mm||hi<0){toast(`${f.name}: 수업별 수납현황 파일이 아니에요`);continue}
+    const c=rows[hi].findIndex(x=>String(x).trim()=='이용자');const out=[];
+    for(const r of rows.slice(hi+2)){const nm=String(r[c]??'').trim();const pay={type:String(r[c+15]??'').trim(),sum:PH_N(r[c+16]),voucher:PH_N(r[c+17]),card:PH_N(r[c+18]),cash:PH_N(r[c+19]),transfer:PH_N(r[c+20]),carryUse:PH_N(r[c+21]),refund:PH_N(r[c+22]),carry:PH_N(r[c+23])};
+      if(!nm||nm=='합계'){if(!nm&&out.length&&pay.type&&String(r[c-1]??'').trim()==='')out[out.length-1].pays.push(pay);continue}
+      out.push({name:nm,gender:String(r[c+1]??'').trim(),birth:xlDate(r[c+2]),prog:String(r[c+4]??'').trim(),ther:String(r[c+5]??'').trim(),voucher:[r[c+6],r[c+7]].map(x=>String(x??'').trim()).filter(Boolean).join(' '),
+        sess:PH_N(r[c+8]),done:PH_N(r[c+9]),normal:PH_N(r[c+11]),fee:PH_N(r[c+12]),disc:PH_N(r[c+13]),total:PH_N(r[c+14]),pays:[pay],note:String(r[c+24]??'').trim(),status:String(r[c+25]??'').trim()})}
+    got.push({id:`ph_${mm[1]}-${mm[2]}`,month:`${mm[1]}-${mm[2]}`,file:f.name,rows:out,at:ymd(new Date())})}catch(e){console.error(e);toast(`${f.name}을 읽지 못했어요`)}}
+  if(!got.length)return;
+  const over=got.filter(g=>(D.payhist||[]).some(x=>x.id==g.id)).map(g=>g.month);
+  if(over.length&&!confirm(`${over.join(', ')} 기록이 이미 있어요. 새 파일 내용으로 바꿀까요?`))return;
+  D.payhist=(D.payhist||[]).filter(x=>!got.some(g=>g.id==x.id)).concat(got);save();
+  const last=got.map(g=>g.month).sort().pop();payCur=parse(last);renderPay();
+  toast(`${got.length}개월(${got.map(g=>+g.month.slice(5)+'월').join(', ')}) 수납 기록을 저장했어요`)}
+function phPaid(r){return r.pays.reduce((s,p)=>s+p.sum,0)}
+function phMethods(r){const t={};r.pays.forEach(p=>[['card','카드'],['cash','현금'],['transfer','계좌이체'],['voucher','바우처'],['carryUse','이월금 사용'],['refund','환불']].forEach(([k,l])=>{if(p[k])t[l]=(t[l]||0)+p[k]}));return Object.entries(t).map(([l,v])=>`${l} ${won(v)}`).join(' · ')}
+function renderPayHist(m){const h=(D.payhist||[]).find(x=>x.month==m);const months=(D.payhist||[]).map(x=>x.month).sort();
+  if(!h){$('#phWrap').innerHTML=months.length?`<p class="muted tiny">케어플 지난 수납 기록이 있는 달: ${months.map(x=>`<a href="#" onclick="payCur=parse('${x}');renderPay();return false">${x}</a>`).join(' · ')}</p>`:'';return}
+  const rows=h.rows.slice().sort((a,b)=>a.name.localeCompare(b.name)||a.prog.localeCompare(b.prog));const sum=k=>rows.reduce((s,r)=>s+(typeof k=='function'?k(r):r[k]),0);
+  $('#phWrap').innerHTML=`<div class="row" style="margin-bottom:8px"><h2 style="margin:0">케어플 지난 수납 기록 · ${m}</h2><span class="grow"></span><span class="muted tiny">${esc(h.file)} · ${h.at} 불러옴</span><button class="btn sm danger" onclick="phDel('${h.id}')">이 달 기록 삭제</button></div>
+  <div class="mhelp" style="margin-bottom:8px">케어플에서 가져온 기록이에요. 위의 청구·미수금 계산에는 들어가지 않아요. 총금액 ${won(sum('total'))}원 · 수납 ${won(sum(phPaid))}원 · 진행 회기 ${sum('done')}회 · ${rows.length}건</div>
+  <div class="tablewrap"><table><thead><tr><th>이용자</th><th>프로그램</th><th>선생님</th><th class="num">회기(진행/전체)</th><th class="num">회기금액</th><th class="num">할인</th><th class="num">총금액</th><th class="num">수납액</th><th>수납 방법</th><th class="num">이월</th><th>상태</th></tr></thead><tbody>
+  ${rows.map(r=>{const cl=D.clients.find(x=>x.name==r.name&&(!x.birth||!r.birth||x.birth==r.birth));const carry=r.pays.reduce((s,p)=>s+p.carry,0);
+    return `<tr><td>${cl?`<b class="click" style="cursor:pointer" onclick="openClient('${cl.id}')">${esc(r.name)}</b>`:`<b>${esc(r.name)}</b>`}${r.voucher&&r.voucher!='일반'?` <span class="badge">${esc(r.voucher)}</span>`:''}</td><td class="tiny">${esc(r.prog)}</td><td>${esc(r.ther)}</td><td class="num">${r.done}/${r.sess}</td><td class="num">${won(r.fee)}</td><td class="num">${r.disc?won(r.disc):''}</td><td class="num">${won(r.total)}</td><td class="num green">${won(phPaid(r))}</td><td class="tiny">${phMethods(r)}</td><td class="num">${carry?won(carry):''}</td><td class="tiny ${r.status=='수납완료'?'green':'red'}">${esc(r.status)}${r.note?`<div class="muted">${esc(r.note)}</div>`:''}</td></tr>`}).join('')}</tbody></table></div>
+  ${months.length>1?`<p class="muted tiny">다른 달: ${months.filter(x=>x!=m).map(x=>`<a href="#" onclick="payCur=parse('${x}');renderPay();return false">${x}</a>`).join(' · ')}</p>`:''}`}
+function phDel(id){if(!confirm('이 달의 케어플 수납 기록을 삭제할까요?'))return;D.payhist=D.payhist.filter(x=>x.id!=id);save();renderPay();toast('삭제했어요')}
+function phClientHtml(c){const rs=[];(D.payhist||[]).forEach(h=>h.rows.forEach(r=>{if(r.name==(c.name||'').trim()&&(!c.birth||!r.birth||c.birth==r.birth))rs.push({m:h.month,...r})}));if(!rs.length)return'';
+  rs.sort((a,b)=>b.m.localeCompare(a.m));
+  return `<details style="margin-top:8px"><summary class="tiny" style="cursor:pointer;font-weight:600">케어플 지난 수납 기록 ${rs.length}건 보기</summary><div style="max-height:220px;overflow:auto;margin-top:6px">${rs.map(r=>`<div class="tiny row" style="padding:3px 0;border-bottom:1px solid var(--line2)"><span style="width:70px">${r.m}</span><span class="grow">${esc(r.prog)} · ${r.done}회</span><span>${won(r.total)}원</span><b class="${r.status=='수납완료'?'green':'red'}" style="width:80px;text-align:right">${esc(r.status)}</b></div>`).join('')}</div></details>`}
 
 function renderAll(){setTitle();renderFilters();renderCal();renderClients();renderConsult();renderLog();renderPay();renderStatus();renderBoard();renderSettings();renderMsg()}
 D=blank();Object.values(KINDS).forEach(a=>D[a]=[]);renderAll();
